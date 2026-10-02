@@ -7,7 +7,7 @@ COPY public ./public
 COPY src ./src
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.28-alpine
+FROM nginxinc/nginx-unprivileged:1.31-alpine
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /build/dist /usr/share/nginx/html
 ARG VCS_REF=local
