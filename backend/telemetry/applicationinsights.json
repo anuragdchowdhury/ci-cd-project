@@ -1,0 +1,33 @@
+{
+  "role": {
+    "name": "notekeeper-api"
+  },
+  "sampling": {
+    "percentage": 10
+  },
+  "instrumentation": {
+    "logging": {
+      "level": "OFF"
+    },
+    "micrometer": {
+      "enabled": false
+    }
+  },
+  "selfDiagnostics": {
+    "destination": "console",
+    "level": "ERROR"
+  },
+  "preview": {
+    "processors": [
+      {
+        "type": "metric-filter",
+        "exclude": {
+          "matchType": "regexp",
+          "metricNames": [
+            ".*"
+          ]
+        }
+      }
+    ]
+  }
+}

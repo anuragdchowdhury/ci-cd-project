@@ -1,0 +1,9 @@
+{
+  "name": "notekeeper-web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {"dev": "vite --host 0.0.0.0", "build": "vite build", "test": "node --test src/api.test.js"},
+  "dependencies": {"@microsoft/applicationinsights-web": "3.4.4", "react": "19.3.0", "react-dom": "19.3.0"},
+  "devDependencies": {"vite": "8.3.2"}
+}

@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: notekeeper-api
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    hikari:
+      maximum-pool-size: 5
+      connection-timeout: 10000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: false
+server:
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+  max-http-request-header-size: 16KB
+management:
+  server:
+    port: 9090
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,db
+  metrics:
+    tags:
+      application: notekeeper-api
+      environment: ${APP_ENVIRONMENT:local}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+logging:
+  structured:
+    format:
+      console: logstash
+  level:
+    root: INFO
+    org.hibernate.SQL: WARN
