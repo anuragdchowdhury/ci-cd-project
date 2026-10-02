@@ -10,7 +10,13 @@
 | GitHub Action pins | Checkout v4.2.2 and upload-artifact v4.6.2 verified against repository tag refs | Container base-image digests and agent checksum hardening remain Phase 2 |
 | Docker Compose and real PostgreSQL smoke test | Not run in this execution environment; Docker unavailable | Included in CI and the local guide; must pass before Azure deployment |
 | Browser visual verification | Not run; no installed browser executable | Frontend build and API tests passed, but visual/interactivity verification remains local |
-| Docker Hub push | Requires your username and publishing token | Never claim a published digest before an actual registry push |
+| GHCR push | Configured to use the main Actions job GITHUB_TOKEN; live push not run here | Never claim a published digest before an actual registry push |
 | Azure/Helm/DNS/monitoring/alerts | Not provisioned in Phase 1 | Follow phased implementation and actual evidence gates |
 
 The backend's structured JSON startup/request logs were observed during the API test. Real trace IDs, Grafana panels, DCR ingestion behavior and alert firing require the telemetry and drill phases; the guide labels future examples as illustrative.
+
+## GHCR change validation
+
+Registry publication now targets GHCR, requests packages:write only on the main-only job, keeps PR container checks read-only, adds OCI repository-source labels, and preserves the digest-pair release manifest. Publisher regression tests cover initial missing manifests, existing tags, denied access, authentication failure and network failure. Actual GHCR authentication, image publication and Docker rebuild must be verified in GitHub Actions after applying the change.
+
+All five GHCR preflight regression tests passed with mocked HTTP responses. Workflow/Compose YAML and Python syntax checks passed; permission checks confirmed that only the main-only images job requests package writes.

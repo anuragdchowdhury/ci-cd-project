@@ -118,7 +118,7 @@ Sampling is normally 10% for routine backend requests. Head sampling cannot guar
 
 ## Build once, promote by digest
 
-Main CI builds/tests two immutable images. Publish them to Docker Hub with the full Git SHA. A release manifest records both registry digests as one release pair. Mirror the pair into ACR using an artifact-preserving copy, check the registry's actual resulting digests, and record provenance. Never rebuild per environment and never deploy `latest`.
+Main CI builds/tests two immutable images. Publish them to GHCR using the main publication job's GITHUB_TOKEN, with the full Git SHA. GHCR packages start private; explicitly set public visibility for the lab after initial publication. A release manifest records both registry digests as one release pair. Mirror the pair into ACR using an artifact-preserving copy, check the registry's actual resulting digests, and record provenance. Never rebuild per environment and never deploy `latest`.
 
 CD: deploy dev → verify readiness, API CRUD and telemetry → deploy staging → repeat validation → protected prod environment approval → deploy prod → validate and watch errors. Approval protection is configured in GitHub settings; `environment: prod` alone does not establish reviewers. Use a protected workflow with fixed artifact-origin checks, namespace scope, per-environment concurrency, immutable release selection, and previous-digest rollback. Helm uses atomic/waited rollouts; database compatibility is checked separately. Do not use an untrusted workflow_run artifact blindly.
 
@@ -182,7 +182,7 @@ union AppRequests, AppDependencies, AppExceptions
 ## External/bootstrap operations Terraform cannot fully do for us
 
 1. Select/activate the Azure subscription, billing and human bootstrap authority; verify current quotas and required provider registrations.
-2. Create/configure GitHub environments/reviewers, branch rules and Docker Hub token/immutability through the account's settings or an explicitly authorized provider. Never assume YAML alone protects prod.
+2. Create/configure GitHub environments/reviewers, branch rules and GHCR package access/visibility through the account's settings or an explicitly authorized provider. Never assume YAML alone protects prod.
 3. Bootstrap the state backend with initial authenticated access, then migrate local bootstrap state to the protected remote backend; never commit it.
 4. Register ephemeral private runners using a narrowly scoped, approved GitHub credential/registration process. Runner identity and deployment identity are separate.
 5. Initialize PostgreSQL Entra principals/SQL grants and apply migrations from private connectivity. Cloud resource RBAC alone is insufficient.

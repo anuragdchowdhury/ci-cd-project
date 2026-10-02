@@ -15,7 +15,7 @@ Start with [Step 1](docs/01-local-and-ci.md). The complete implementation order 
 - Browser Application Insights SDK. It runs in the browser, not as a second process in the frontend container. It is disabled locally until configured.
 - Request IDs on every response; real W3C trace/span IDs when the Java agent supplies a span. A request ID alone is not a distributed trace.
 - Backend API tests, frontend API tests, and a container/PostgreSQL smoke test used in GitHub Actions.
-- CI tests → builds two images → tests the exact images → publishes full-SHA tags to Docker Hub → records immutable digest references in a release artifact. Pull requests never publish. No GitHub CI metrics are exported to Azure.
+- CI tests → builds two images → tests the exact images → publishes full-SHA tags to GHCR using the job-scoped GITHUB_TOKEN → records immutable digest references in a release artifact. Pull requests never publish. No GitHub CI metrics are exported to Azure.
 
 ## What is intentionally a later lab milestone
 

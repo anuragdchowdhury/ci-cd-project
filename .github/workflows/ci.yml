@@ -18,6 +18,8 @@ jobs:
         with: {persist-credentials: false}
       - name: Test Spring Boot using Java 21
         run: docker run --rm -v "$PWD/backend:/workspace" -w /workspace maven:3.9.12-eclipse-temurin-21 mvn -B -ntp verify
+      - name: Check GHCR release safety
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
   frontend-test:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -26,8 +28,34 @@ jobs:
         with: {persist-credentials: false}
       - name: Test and build React using Node 24
         run: docker run --rm -v "$PWD/frontend:/workspace" -w /workspace node:24-alpine sh -ec 'npm ci; npm test; npm run build'
-  images:
+  container-check:
+    if: github.event_name == 'pull_request'
     needs: [backend-test, frontend-test]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: {persist-credentials: false}
+      - name: Build and test the pull request containers
+        env:
+          VCS_REF: ${{ github.sha }}
+          SOURCE_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          cp .env.example .env
+          docker compose up --build -d
+          python3 scripts/smoke.py
+      - name: Print diagnostic container logs on failure
+        if: failure()
+        run: docker compose logs --tail=100
+      - name: Stop the disposable test stack
+        if: always()
+        run: docker compose down --volumes
+  images:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend-test, frontend-test]
+    permissions:
+      contents: read
+      packages: write
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -36,24 +64,22 @@ jobs:
       - name: Build the two images once and start the local stack
         env:
           VCS_REF: ${{ github.sha }}
+          SOURCE_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
         run: |
           cp .env.example .env
           docker compose up --build -d
       - name: Verify real PostgreSQL migrations and same-origin CRUD
         run: python3 scripts/smoke.py
-      - name: Publish the exact tested images with full commit SHA tags
+      - name: Publish the exact tested images to GHCR with full commit SHA tags
         id: publish
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
-          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          GHCR_NAMESPACE: ${{ github.repository_owner }}
+          REGISTRY_USERNAME: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
-          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
-            echo '::notice::Tests passed. Add DOCKERHUB_USERNAME and DOCKERHUB_TOKEN, then rerun this workflow to publish.'
-            exit 0
-          fi
-          printf '%s' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$REGISTRY_USERNAME" --password-stdin
           python3 scripts/publish.py
           echo 'published=true' >> "$GITHUB_OUTPUT"
       - name: Store immutable image references for later promotion
@@ -69,4 +95,6 @@ jobs:
         run: docker compose logs --tail=100
       - name: Stop the disposable test stack
         if: always()
-        run: docker compose down --volumes
+        run: |
+          docker compose down --volumes
+          docker logout ghcr.io

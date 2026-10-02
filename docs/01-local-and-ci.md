@@ -85,42 +85,32 @@ git push -u origin main
 
 Open your repository → Actions → **Test, build and publish**. The workflow executes backend tests and frontend tests independently, then builds the two container images and uses real PostgreSQL for the smoke test.
 
-Without Docker Hub settings, tests/builds still run and publishing reports a notice. The workflow performs no Azure login and sends no CI metrics or CI application telemetry to Azure.
+On pushes to main, publication uses the GitHub-provided GITHUB_TOKEN automatically. The main-only images job has contents:read and packages:write. PR container checks run in a separate read-only container-check job and never log in to the registry. The workflow performs no Azure login and sends no CI metrics or CI application telemetry to Azure.
 
-## 6. Configure Docker Hub publication
+## 6. Verify GHCR publication
 
-Create these repositories under your actual Docker Hub username/organization:
+GHCR replaces Docker Hub for this project. No Docker Hub account, DOCKERHUB_USERNAME variable, DOCKERHUB_TOKEN secret, or manually created GitHub PAT is needed for Actions publication. GitHub creates the short-lived GITHUB_TOKEN automatically; do not try to create a repository secret with that name.
 
-- `notekeeper-backend`
-- `notekeeper-frontend`
-
-Public repositories keep this dummy lab simple. Azure deployments will eventually pull an ACR mirror using the AKS kubelet identity, so we do not put a Docker Hub pull password in pods.
-
-Create a Docker Hub access token with the minimum repository write access available for your account. Use a token instead of your account password. Configure immutable SHA tags where your Docker Hub plan supports it. We will enforce immutability in the release checks as well.
-
-In GitHub → Settings → Secrets and variables → Actions:
-
-| Kind | Name | Value |
-|---|---|---|
-| Repository variable | `DOCKERHUB_USERNAME` | Your Docker Hub namespace, not your GitHub username unless identical |
-| Repository secret | `DOCKERHUB_TOKEN` | Docker Hub access token |
-
-Do not put Azure subscription secrets, DB passwords or Key Vault runtime secrets here. Docker Hub publishing is the CI-specific credential exception; Azure access later uses GitHub OIDC.
-
-Rerun the main-branch workflow to publish, provided these SHA tags have not already been published. If an immutable tag already exists, preserve it; make a new commit for a new build. A release should not silently replace artifacts under an existing SHA.
-
-Expected tags:
+After tests and the PostgreSQL container smoke test pass on main, the same tested images are pushed to:
 
 ```text
-YOUR_DOCKERHUB_USERNAME/notekeeper-backend:<full-40-character-Git-SHA>
-YOUR_DOCKERHUB_USERNAME/notekeeper-frontend:<full-40-character-Git-SHA>
+ghcr.io/anuragdchowdhury/notekeeper-backend:<full-40-character-Git-SHA>
+ghcr.io/anuragdchowdhury/notekeeper-frontend:<full-40-character-Git-SHA>
 ```
 
-The Actions run also has a `release-<SHA>` artifact containing release.json and two digest references. These are actual registry digests, not Git SHAs and not Docker image IDs.
+Names use the lowercased repository owner. Each image has org.opencontainers.image.source pointing to this repository. Packages published by its workflow are linked to the repository; existing packages created outside this workflow may require granting this repository access in the package settings.
+
+First publication creates the packages with private visibility. To make this dummy lab public, open your GitHub profile -> Packages -> each notekeeper package -> Package settings -> Change visibility -> Public. Publishing from a public repository does not make the packages public automatically. Public GHCR packages support anonymous pulls. Future AKS deployments will still use an ACR mirror pulled via kubelet managed identity; no GHCR pull token belongs in pods.
+
+The workflow checks both remote SHA tags before publishing either. It uses authenticated registry status: a missing manifest (404) allows initial publication, while authentication/authorization/network failures stop publication. An existing SHA tag is preserved. This is a workflow safeguard, not a registry-enforced immutable-tag guarantee; always deploy the actual digest. Main publication jobs are serialized by workflow concurrency.
+
+Do not rerun publication to replace a successfully published SHA. If either image exists (including a partially published pair after a failure), preserve it and make a new commit for a new release. The Actions run has a release-<SHA> artifact containing release.json with both ghcr.io/...@sha256:... references. These are actual registry digests, not Git SHAs and not Docker image IDs.
+
+If publishing fails with a package permission error, verify that the main job has packages:write and that any existing package grants this repository Actions access. Keep PR tokens read-only. Do not solve it by adding a broad personal token or enabling writes globally.
 
 ## 7. Protect main after the initial bootstrap commit
 
-GitHub → Settings → Rules/Rulesets (or Branches) → protect `main`: require pull requests, passing backend-test, frontend-test and images checks, and block force pushes. Use feature branches afterward. Configure dev, staging and prod GitHub Environments during CD setup, with production reviewers and deployment branch restrictions; verify which protection features your GitHub plan offers.
+GitHub → Settings → Rules/Rulesets (or Branches) → protect `main`: require pull requests, passing backend-test, frontend-test and container-check PR checks, and block force pushes. Use feature branches afterward. Configure dev, staging and prod GitHub Environments during CD setup, with production reviewers and deployment branch restrictions; verify which protection features your GitHub plan offers.
 
 ## Step 1 exit criteria
 

@@ -20,7 +20,9 @@ COPY --chmod=0555 entrypoint.sh /app/entrypoint.sh
 ENV APPLICATIONINSIGHTS_CONFIGURATION_FILE=/app/applicationinsights.json
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=65 -XX:+ExitOnOutOfMemoryError -Djava.io.tmpdir=/tmp"
 ARG VCS_REF=local
+ARG SOURCE_REPOSITORY=https://github.com/anuragdchowdhury/ci-cd-project
 LABEL org.opencontainers.image.revision=$VCS_REF
+LABEL org.opencontainers.image.source=$SOURCE_REPOSITORY
 USER 10001:10001
 EXPOSE 8080 9090
 ENTRYPOINT ["/app/entrypoint.sh"]
