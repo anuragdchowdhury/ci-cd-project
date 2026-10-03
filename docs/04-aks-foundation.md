@@ -158,3 +158,13 @@ For a pause, stopping AKS and PostgreSQL saves some compute charges but storage,
 
 - AKS rolling-upgrade constraints: https://learn.microsoft.com/azure/aks/upgrade-aks-node-pools-rolling
 - Pinned default-pool provider schema: https://github.com/hashicorp/terraform-provider-azurerm/blob/v5.8.0/website/docs/r/kubernetes_cluster.html.markdown
+
+## Post-apply PostgreSQL normalization
+
+Azure selected database zone 2 when no zone was requested; Terraform previously tried to unset it on refresh. The server now ignores only `zone`, because placement is intentionally service-selected. This does not set AKS availability zones or hide other server drift.
+
+The operator guest UPN is 78 ASCII characters; PostgreSQL returned its first 63 as the administrator name. The administrator declaration now uses that same 63-character value from the original UPN, with an ASCII-input guard. Object ID, tenant and administrator identity remain managed; no broad ignore_changes is applied to administrator permissions or identity. This removes the observed name-only replacement without deleting/recreating the existing assignment. Use the registered administrator name for future SQL login, not the overlength original UPN.
+
+After merging the normalization fix, run a fresh `terraform plan -var-file=../.generated/nonprod.auto.tfvars.json` from `infra/nonprod`. Expected: No changes; there is no need to apply the earlier 1-add/1-change/1-destroy plan or re-import resources. If another diff appears, inspect it before applying.
+
+Identifier limit: https://www.postgresql.org/docs/16/sql-syntax-lexical.html
