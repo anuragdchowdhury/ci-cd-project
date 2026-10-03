@@ -1,0 +1,50 @@
+name: Deploy Dev
+on:
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Full SHA of a successful main CI release to promote
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: deployment-dev
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: dev
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      RELEASE_SHA: ${{ inputs.release_sha }}
+      ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+      DEV_PLATFORM_JSON: ${{ vars.DEV_PLATFORM_JSON }}
+      DEPLOY_VM_RESOURCE_GROUP: ${{ vars.DEPLOY_VM_RESOURCE_GROUP }}
+      DEPLOY_VM_NAME: ${{ vars.DEPLOY_VM_NAME }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: {persist-credentials: false}
+      - name: Verify the successful CI release and artifact digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/fetch_release.py "$RELEASE_SHA" --registry "$ACR_LOGIN_SERVER"
+      - name: Authenticate Dev deployer using OIDC
+        id: login
+        uses: azure/login@eec3c95657c1536435858eda1f3ff5437fee8474 # v2.3.0
+        with:
+          client-id: ${{ vars.AZURE_DEV_DEPLOY_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Start the VNet deployment VM
+        run: az vm start --resource-group "$DEPLOY_VM_RESOURCE_GROUP" --name "$DEPLOY_VM_NAME"
+      - name: Migrate, deploy the digest pair and verify CRUD
+        run: python3 scripts/invoke_deployment.py
+      - name: Deallocate the VM after this deployment attempt
+        if: always() && steps.login.outcome == 'success'
+        run: az vm deallocate --resource-group "$DEPLOY_VM_RESOURCE_GROUP" --name "$DEPLOY_VM_NAME"

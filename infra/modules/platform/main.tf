@@ -41,7 +41,7 @@ resource "azurerm_subnet" "endpoints" {
   virtual_network_name = azurerm_virtual_network.platform.name
   address_prefixes     = [cidrsubnet(var.vnet_cidr, 8, 17)]
 }
-# Reserved now; a later PR adds the ephemeral deployment runner here.
+# Reserved VNet subnet for the optional deployment executor VM.
 resource "azurerm_subnet" "runner" {
   name                 = "deployment-runner"
   resource_group_name  = azurerm_resource_group.platform.name

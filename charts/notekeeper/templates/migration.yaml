@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: notekeeper-migration
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: notekeeper-migration
+        azure.workload.identity/use: "true"
+    spec:
+      restartPolicy: Never
+      # Created by the operator before the first Helm install, so this pre-install
+      # Job does not depend on a ServiceAccount that Helm has not created yet.
+      serviceAccountName: notekeeper-migration
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: migration
+          image: {{ required "backendImage is required" .Values.backendImage | quote }}
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            {{- include "notekeeper.security" . | nindent 12 }}
+          env:
+            {{- include "notekeeper.db-env" . | nindent 12 }}
+            - name: DB_USERNAME
+              value: {{ required "migrationRole is required" .Values.migrationRole | quote }}
+            - name: APP_MIGRATE_ONLY
+              value: "true"
+            - name: SPRING_MAIN_WEB_APPLICATION_TYPE
+              value: none
+            - name: SPRING_FLYWAY_ENABLED
+              value: "true"
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              value: none
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {cpu: "1", memory: 1Gi}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 256Mi}

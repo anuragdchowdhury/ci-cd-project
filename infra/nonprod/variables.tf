@@ -47,3 +47,24 @@ variable "budget_start_date" {
   type        = string
   description = "First day of the current month, UTC: YYYY-MM-01T00:00:00Z. Keep it stable after creation."
 }
+
+variable "deployment_vm_enabled" {
+  type    = bool
+  default = false
+}
+variable "operator_ipv4" {
+  type    = string
+  default = ""
+  validation {
+    condition     = !var.deployment_vm_enabled || (can(cidrnetmask("${var.operator_ipv4}/32")) && !strcontains(var.operator_ipv4, "/"))
+    error_message = "Supply one operator public IPv4 address, without a prefix."
+  }
+}
+variable "ssh_public_key" {
+  type    = string
+  default = ""
+  validation {
+    condition     = !var.deployment_vm_enabled || startswith(var.ssh_public_key, "ssh-ed25519 ")
+    error_message = "Supply an Ed25519 public SSH key. Never supply a private key."
+  }
+}

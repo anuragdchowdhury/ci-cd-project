@@ -1,0 +1,18 @@
+# Generated environment settings and a verified CI release supply these fields.
+bootstrapOnly: false
+releaseSha: ""
+backendImage: ""
+frontendImage: ""
+tenantId: ""
+runtimeClientId: ""
+migrationClientId: ""
+runtimeRole: ""
+migrationRole: ""
+postgresFqdn: ""
+database: ""
+vaultName: ""
+# Connection strings are added when the trace backend is provisioned.
+# No Azure resource is provisioned by this chart.
+applicationInsightsConnectionString: ""
+backendReplicas: 1
+frontendReplicas: 1
