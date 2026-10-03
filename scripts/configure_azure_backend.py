@@ -14,7 +14,7 @@ def main():
     root = Path(__file__).resolve().parents[1]
     generated = root / "infra" / ".generated"
     generated.mkdir(mode=0o700, exist_ok=True)
-    for stack in ("bootstrap", "registry"):
+    for stack in ("bootstrap", "registry", "nonprod", "prod"):
         values = {
             "storage_account_name": config["storage_account_name"],
             "container_name": "tfstate-" + stack,
@@ -33,7 +33,7 @@ def main():
     backend = root / "infra" / "bootstrap" / "backend.local.tf"
     backend.write_text('terraform {\n  backend "azurerm" {}\n}\n')
     print("Generated backend configuration in infra/.generated and enabled the bootstrap backend.")
-    print("Run the documented bootstrap init -migrate-state before any further plan/apply.")
+    print("First-time bootstrap: follow Step 2 to migrate state. An already-migrated backend needs no new migration.")
     print("GitHub variables (identifiers, not credentials):")
     print("AZURE_SUBSCRIPTION_ID=" + config["subscription_id"])
     print("AZURE_TENANT_ID=" + config["tenant_id"])

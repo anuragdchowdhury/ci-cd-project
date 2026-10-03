@@ -45,7 +45,7 @@ Central India is the target. Before apply, check the current AKS versions, VM fa
 | Resource | Initial lab setting | Why |
 |---|---|---|
 | AKS | Two clusters, one system pool each | Required prod/nonprod boundary |
-| Nodes | Candidate `Standard_D2s_v5`, autoscaler 1–2 per cluster | Two vCPU/eight GiB candidate; validate current AKS support/quota |
+| Nodes | Candidate `Standard_D4s_v5`, autoscaler 1–2 per cluster | Four vCPU/16 GiB candidate (current system-pool minimum is four vCPU); validate current AKS support/quota |
 | AKS tier | Free where available for the lab | No paid control-plane SLA needed for an exercise |
 | API | One replica/environment; request 250m/512Mi, limit 1 CPU/1Gi | JVM plus agent need memory headroom |
 | Frontend | One replica/environment; request 50m/64Mi, limit 250m/128Mi | Static serving is small |
@@ -81,7 +81,7 @@ Interpret the requirement as **only the access each workload needs**. Broad acce
 
 ACR uses RBAC + ABAC repository permissions. Use Repository Reader/Writer roles with Request repository-name conditions; legacy AcrPull/AcrPush are not honored in this mode. The bootstrap separates ordinary registry management from privileged role assignment.
 
-OIDC subjects must include your exact owner/repository and GitHub environment, such as `repo:anuragdchowdhury/ci-cd-project:environment:prod`. Audience is `api://AzureADTokenExchange`; use job-local `id-token: write` only in jobs that log in to Azure. Environment protection and workflow branch restrictions are part of the trust boundary. A reviewed bootstrap must also provision role-assignment permissions; ordinary Contributor cannot grant RBAC to itself.
+OIDC subjects must include your exact owner/repository and GitHub environment, such as `repo:anuragdchowdhury@88018047/ci-cd-project@1401748151:environment:prod`. Audience is `api://AzureADTokenExchange`; use job-local `id-token: write` only in jobs that log in to Azure. Environment protection and workflow branch restrictions are part of the trust boundary. A reviewed bootstrap must also provision role-assignment permissions; ordinary Contributor cannot grant RBAC to itself.
 
 Azure RBAC does not grant PostgreSQL SQL privileges. Connect as the configured Entra DB administrator from a private runner; register each identity's object ID in PostgreSQL, create roles, and grant database/schema/table/default privileges. Runtime gets SELECT/INSERT/UPDATE/DELETE, with no server-admin or schema-owner rights. Migrations use their own identity, complete before rollout, and remain compatible with the previous release for rollback.
 
