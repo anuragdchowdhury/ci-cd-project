@@ -6,19 +6,9 @@ Finish Step 6 first: ready API, trusted origin/public TLS, working Grafana, real
 
 Start the VM and SSH using Step 6. In the checked-out repository, open a subshell with disposable operator Azure login/kubeconfig; use Step 6's credential cleanup trap and `az aks get-credentials`/`kubelogin` commands. Operator authority is needed for the isolated scenario namespace and ingress; the ordinary CD identity remains Dev-namespace scoped.
 
-For traffic drills, forward directly to the backend **pod** so readiness/DB faults do not reroute requests away from the diagnostic workload:
+For HTTP fault drills, forward the stable frontend pod. Backend fault/sampling changes roll the backend; Nginx continues proxying to its Service without restarting this forward:
 
 ```bash
-kubectl -n notekeeper-dev port-forward deployment/notekeeper-api 8080:8080 --address 127.0.0.1 > "$HOME/notekeeper-forward.log" 2>&1 &
-FORWARD_PID=$!
-```
-
-A fault/sampling change causes a rollout and kills that pod's forwarding session. For normal HTTP drills use `service/frontend` forwarding instead, which also needs restarting after its selected pod changes. The simplest repeatable option is to generate traffic through the public URL from your **laptop's allowed IP**, while executing the fault change on the VM. For the self-contained script, use frontend forwarding on the VM and inspect/restart if requests become network errors. Network errors are not proof of API HTTP 500/latency.
-
-**Recommended self-contained local drill:** use a stable local Service proxy that survives backend rollout:
-
-```bash
-kill "$FORWARD_PID" 2>/dev/null || true
 kubectl -n notekeeper-dev port-forward service/frontend 8080:8080 --address 127.0.0.1 > "$HOME/notekeeper-forward.log" 2>&1 &
 FORWARD_PID=$!
 python3 scripts/lab_scenarios.py --scenario baseline --seconds 180 --rate 5

@@ -19,7 +19,7 @@ This adds `edge.backend.hcl`: existing `tfstate-nonprod` container, separate `ed
 Register providers if not already Registered:
 
 ```bash
-for provider in Microsoft.Monitor Microsoft.Dashboard Microsoft.Insights Microsoft.OperationalInsights Microsoft.Cdn; do
+for provider in Microsoft.Monitor Microsoft.Dashboard Microsoft.Insights Microsoft.OperationalInsights Microsoft.AlertsManagement Microsoft.Cdn; do
   az provider register --namespace "$provider" --wait
   az provider show --namespace "$provider" --query registrationState -o tsv
 done
