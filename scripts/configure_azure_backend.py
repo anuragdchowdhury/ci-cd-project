@@ -14,7 +14,7 @@ def main():
     root = Path(__file__).resolve().parents[1]
     generated = root / "infra" / ".generated"
     generated.mkdir(mode=0o700, exist_ok=True)
-    for stack in ("bootstrap", "registry", "nonprod", "prod"):
+    for stack in ("bootstrap", "registry", "nonprod"):
         values = {
             "storage_account_name": config["storage_account_name"],
             "container_name": "tfstate-" + stack,

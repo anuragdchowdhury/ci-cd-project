@@ -18,11 +18,11 @@ Follow [Azure bootstrap](docs/02-azure-bootstrap.md), then [secure ACR publicati
 - Request IDs on every response; real W3C trace/span IDs when the Java agent supplies a span. A request ID alone is not a distributed trace.
 - Backend API tests, frontend API tests, and a container/PostgreSQL smoke test used in GitHub Actions.
 - CI tests → builds two images → tests the exact images. Main publishes the exact tested images to ACR through the existing OIDC publisher identity after security checks. PRs remain read-only. No GitHub CI metrics are exported to Azure.
-- Terraform bootstrap/ACR plus reusable nonprod/prod platform roots: private AKS, Entra-only private PostgreSQL, private Key Vaults, workload/deploy identities, scoped ACR pulls and budget alerts. Step 4 explains provisioning and verification; code presence does not mean these resources have been applied.
+- Terraform bootstrap/ACR plus Dev-only nonprod platform root: private AKS, Entra-only private PostgreSQL, private Key Vaults, workload/deploy identities, scoped ACR pulls and budget alerts. Step 4 explains provisioning and verification; code presence does not mean these resources have been applied.
 
 ## What is intentionally a later lab milestone
 
-Azure bootstrap/ACR provisioning, diagnostic OIDC and main CI publication have been verified. Step 4 supplies AKS/network/database/vault foundation code for operator review and apply. Private runners, Helm, Front Door/custom domains, database SQL principals/migrations, runtime Key Vault access, Azure telemetry, dashboards, alerts and drills remain subsequent milestones. There is no ongoing GHCR/ACR mirror. Follow Step 2's account, permission, cost and plan checks before applying.
+Azure bootstrap/ACR provisioning, diagnostic OIDC and main CI publication have been verified. Step 4 supplies a Dev-only foundation: two fixed D4s_v4 nodes, one Dev database/vault and Dev identities. Staging/prod provisioning is deferred for quota; their historical state containers are unchanged. Private runners, Helm, Front Door/custom domains, database SQL principals/migrations, runtime Key Vault access, Azure telemetry, dashboards, alerts and drills remain subsequent milestones. There is no ongoing GHCR/ACR mirror. Follow Step 2's account, permission, cost and plan checks before applying.
 
 This application has shared notes and no end-user login. Use disposable sample notes. We will restrict the hosted lab to operator access at Front Door/WAF before exposing it; real multi-user notes require authentication and per-user authorization as a separate application feature.
 
@@ -67,7 +67,7 @@ Internal management endpoints use port 9090: `/actuator/health/liveness`, `/actu
 | `DB_URL` | Compose PostgreSQL | Private PostgreSQL FQDN; correct environment database |
 | `DB_USERNAME` | Local user | Entra principal registered in PostgreSQL |
 | `DB_PASSWORD` | Disposable `.env` value | Unset |
-| `APP_ENVIRONMENT` | `local` | `dev`, `staging`, `prod` |
+| `APP_ENVIRONMENT` | `local` | `dev` (staging/prod deferred) |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | Unset | Public routing information for the backend telemetry resource |
 | Workload Identity variables | Unset | Injected by AKS federation/webhook |
 | `/runtime-config.js` | Included local default | Helm-mounted ConfigMap; same immutable frontend image |

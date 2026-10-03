@@ -93,13 +93,16 @@ resource "azurerm_role_assignment" "image_pull" {
   EOT
 }
 resource "azurerm_kubernetes_cluster" "platform" {
-  name                                = "aks-notekeeper-${var.boundary}"
-  location                            = var.location
-  resource_group_name                 = azurerm_resource_group.platform.name
-  node_resource_group                 = "rg-${var.name_prefix}-${var.boundary}-nodes"
-  dns_prefix                          = "${var.name_prefix}-${var.boundary}-${local.suffix}"
-  kubernetes_version                  = var.kubernetes_version
-  sku_tier                            = "Free"
+  name                = "aks-notekeeper-${var.boundary}"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.platform.name
+  node_resource_group = "rg-${var.name_prefix}-${var.boundary}-nodes"
+  dns_prefix          = "${var.name_prefix}-${var.boundary}-${local.suffix}"
+  kubernetes_version  = var.kubernetes_version
+  sku_tier            = "Free"
+  # Short-lived quota-constrained lab: upgrades require an explicit maintenance plan.
+  automatic_upgrade_channel           = null
+  node_os_upgrade_channel             = "None"
   private_cluster_enabled             = true
   private_cluster_public_fqdn_enabled = false
   private_dns_zone_id                 = "System"
@@ -129,12 +132,14 @@ resource "azurerm_kubernetes_cluster" "platform" {
     name                 = "system"
     vm_size              = var.node_vm_size
     vnet_subnet_id       = azurerm_subnet.nodes.id
-    auto_scaling_enabled = true
-    min_count            = 1
-    max_count            = 2
+    auto_scaling_enabled = false
+    node_count           = 2
     max_pods             = 50
     os_disk_size_gb      = 64
     os_sku               = "Ubuntu"
+    # System pools do not support maxUnavailable; zero surge is not a supported
+    # substitute here. An upgrade requires quota for a third four-vCPU node.
+    # Automatic upgrades are disabled above; see the runbook before upgrading.
     upgrade_settings { max_surge = "1" }
   }
   network_profile {
