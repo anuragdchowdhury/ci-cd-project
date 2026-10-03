@@ -73,13 +73,13 @@ Interpret the requirement as **only the access each workload needs**. Broad acce
 | Infrastructure plan/apply | GitHub OIDC, distinct trust from app deploy | Target resource groups plus separate reviewed role-assignment permissions; state container Blob Data access |
 | Dev/staging/prod deployer | Environment-specific GitHub OIDC subjects | Get cluster user credentials on target cluster and Kubernetes RoleBindings in only its namespace |
 | Platform/bootstrap deployer | Separate controlled identity | Install ingress, collectors/CRDs and namespace RBAC; not granted to ordinary app deployment jobs |
-| Registry publisher/mirror | GitHub OIDC to Azure | `AcrPush` at registry scope in the non-ABAC registry model |
-| AKS kubelet | AKS managed identity | `AcrPull` at that registry; it pulls images, not the application's ServiceAccount |
+| Registry publisher | GitHub OIDC to Azure | Repository Writer conditioned to the two application repositories; no state or infrastructure administration |
+| AKS kubelet | AKS managed identity | Repository Reader conditioned to the application repositories; it pulls images, not the application's ServiceAccount |
 | API runtime | Per-environment AKS Workload Identity | PostgreSQL DML in its database; read only required Key Vault secrets; telemetry publishing if supported/configured |
 | Migration job | Separate federated identity | Schema creation/migration rights in just its environment DB |
 | Grafana | Managed identity | Read metrics from exactly the relevant Azure Monitor Workspaces |
 
-Keep ACR in the RBAC mode that supports the selected roles. If we enable repository ABAC, use its repository roles instead of incorrectly assuming AcrPull/AcrPush still work.
+ACR uses RBAC + ABAC repository permissions. Use Repository Reader/Writer roles with Request repository-name conditions; legacy AcrPull/AcrPush are not honored in this mode. The bootstrap separates ordinary registry management from privileged role assignment.
 
 OIDC subjects must include your exact owner/repository and GitHub environment, such as `repo:anuragdchowdhury/ci-cd-project:environment:prod`. Audience is `api://AzureADTokenExchange`; use job-local `id-token: write` only in jobs that log in to Azure. Environment protection and workflow branch restrictions are part of the trust boundary. A reviewed bootstrap must also provision role-assignment permissions; ordinary Contributor cannot grant RBAC to itself.
 
@@ -118,7 +118,7 @@ Sampling is normally 10% for routine backend requests. Head sampling cannot guar
 
 ## Build once, promote by digest
 
-Main CI builds/tests two immutable images. Publish them to GHCR using the main publication job's GITHUB_TOKEN, with the full Git SHA. GHCR packages start private; explicitly set public visibility for the lab after initial publication. A release manifest records both registry digests as one release pair. Mirror the pair into ACR using an artifact-preserving copy, check the registry's actual resulting digests, and record provenance. Never rebuild per environment and never deploy `latest`.
+Main CI builds/tests two immutable images. After the Azure/security checkpoints, publish directly to one ACR using a scoped GitHub OIDC identity and the full Git SHA. The prior GHCR milestone is complete and publication is now paused; there is no ongoing GHCR mirror. A release manifest records both ACR registry digests as one release pair. Never rebuild per environment and never deploy `latest`.
 
 CD: deploy dev → verify readiness, API CRUD and telemetry → deploy staging → repeat validation → protected prod environment approval → deploy prod → validate and watch errors. Approval protection is configured in GitHub settings; `environment: prod` alone does not establish reviewers. Use a protected workflow with fixed artifact-origin checks, namespace scope, per-environment concurrency, immutable release selection, and previous-digest rollback. Helm uses atomic/waited rollouts; database compatibility is checked separately. Do not use an untrusted workflow_run artifact blindly.
 
@@ -130,8 +130,8 @@ Terraform pipeline is separate: format/validate/security-policy checks → plan 
 |---|---|---|
 | 1 | Application, local PostgreSQL, Dockerfiles, first CI | CRUD persists; tests pass; SHA tags and release manifest exist |
 | 2 | Base-image/agent checksum pinning, dependency/image/SAST gates, release immutability | Deliberate vulnerable change fails; clean tested release passes; no CI metrics collection |
-| 3 | Azure CLI/subscription selection, providers, quotas, state bootstrap, OIDC, budgets | GitHub gets short-lived Azure tokens; state accessible via Entra; no static cloud secret |
-| 4 | Terraform foundation/nonprod/prod stacks; private runners; ACR and DB | Two clusters, private DB/Key Vault, working private DNS; identities denied outside their scope |
+| 3 | Azure CLI/subscription selection, providers, quotas, state bootstrap, OIDC, budgets and Basic ACR | GitHub gets short-lived Azure tokens; state accessible via Entra; scoped registry IAM; no static cloud secret |
+| 4 | Terraform foundation/nonprod/prod stacks; private runners; DB and kubelet registry access | Two clusters, private DB/Key Vault, working private DNS; identities denied outside their scope |
 | 5 | Helm ingress/workloads, DB principal/migration job, PLS/Front Door wiring, DNS/TLS, CD | Three hostnames, `/api` routing, same digest pair, prod approval, safe rollback |
 | 6 | Terraform AMW/LAW/AI/Grafana/DCR/alerts; collector and agent configuration | Metrics, logs and traces arrive, correlate, obey retention/filtering, and pass duplication audit |
 | 7 | Dashboards and repeatable nonprod-only incident drills | Each rule shows before/trigger/fired/recovery evidence and logs/trace IDs where meaningful |
@@ -182,7 +182,7 @@ union AppRequests, AppDependencies, AppExceptions
 ## External/bootstrap operations Terraform cannot fully do for us
 
 1. Select/activate the Azure subscription, billing and human bootstrap authority; verify current quotas and required provider registrations.
-2. Create/configure GitHub environments/reviewers, branch rules and GHCR package access/visibility through the account's settings or an explicitly authorized provider. Never assume YAML alone protects prod.
+2. Create/configure GitHub environments/reviewers and branch rules through the account's settings or an explicitly authorized provider. Never assume YAML alone protects prod. Keep historical GHCR packages private; future releases go to ACR.
 3. Bootstrap the state backend with initial authenticated access, then migrate local bootstrap state to the protected remote backend; never commit it.
 4. Register ephemeral private runners using a narrowly scoped, approved GitHub credential/registration process. Runner identity and deployment identity are separate.
 5. Initialize PostgreSQL Entra principals/SQL grants and apply migrations from private connectivity. Cloud resource RBAC alone is insufficient.

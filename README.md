@@ -4,6 +4,8 @@ Repository: https://github.com/anuragdchowdhury/ci-cd-project
 
 Start with [Step 1](docs/01-local-and-ci.md). The complete implementation order and acceptance criteria are in [the lab plan](docs/00-lab-plan.md). Optional Antigravity prompts are in [the generation guide](docs/antigravity-prompts.md).
 
+The next checkpoint is [Azure bootstrap and registry foundation](docs/02-azure-bootstrap.md). Terraform code is supplied, but Azure resources have not been applied here. GHCR publication is paused while we move to one ACR with OIDC publication and managed-identity pulls.
+
 ## What is implemented in this starter
 
 - Spring Boot 4.1.1 / Java 21 REST API: create, list with pagination, read, update, delete, validation and sanitized errors.
@@ -15,11 +17,12 @@ Start with [Step 1](docs/01-local-and-ci.md). The complete implementation order 
 - Browser Application Insights SDK. It runs in the browser, not as a second process in the frontend container. It is disabled locally until configured.
 - Request IDs on every response; real W3C trace/span IDs when the Java agent supplies a span. A request ID alone is not a distributed trace.
 - Backend API tests, frontend API tests, and a container/PostgreSQL smoke test used in GitHub Actions.
-- CI tests → builds two images → tests the exact images → publishes full-SHA tags to GHCR using the job-scoped GITHUB_TOKEN → records immutable digest references in a release artifact. Pull requests never publish. No GitHub CI metrics are exported to Azure.
+- CI tests → builds two images → tests the exact images. Prior GHCR publication has completed its checkpoint; new publication is paused pending ACR and security-gate validation. No GitHub CI metrics are exported to Azure.
+- Terraform bootstrap and ACR roots, scoped GitHub federation, protected remote-state configuration and a manual read-only OIDC scope check. See Step 2 for operator execution and cloud verification.
 
 ## What is intentionally a later lab milestone
 
-Terraform Azure resources, Azure OIDC federation, private deployment runners, ACR mirroring, Helm, custom domains, managed database principals/migrations, Key Vault access, Azure telemetry collection, dashboards, alert rules and incident drills are **planned, not provisioned or validated by this starter**. Their order and verification requirements are explicit in the lab plan. Do not run an Azure apply until we have generated and reviewed that phase's code and checked your subscription.
+Azure bootstrap/ACR have supplied code but are **not provisioned or cloud-validated here**. Private runners, hardened ACR publication, Helm, custom domains, managed database principals/migrations, Key Vault access, Azure telemetry, dashboards, alerts and drills remain later milestones. There is no ongoing GHCR/ACR mirror. Follow Step 2's account, permission, cost and plan checks before applying.
 
 This application has shared notes and no end-user login. Use disposable sample notes. We will restrict the hosted lab to operator access at Front Door/WAF before exposing it; real multi-user notes require authentication and per-user authorization as a separate application feature.
 
@@ -73,7 +76,7 @@ Internal management endpoints use port 9090: `/actuator/health/liveness`, `/actu
 
 Azure schema migration will run once per environment as a controlled job using a migration identity. The long-running API gets DML privileges only. `ddl-auto=validate` prevents application startup from silently creating or altering tables.
 
-CI emits `release.json` containing the full Git SHA and `repository@sha256:...` references for both images. CD will read this pair, mirror the artifacts to ACR without rebuilding, verify source/destination digests, and promote the same digest pair through all three environments. SHA tags are human-readable pointers; **digests are deployment identity**. OCI labels contain the Git revision. Base images and the downloaded agent need digest/checksum hardening plus vulnerability gates in the next CI milestone before cloud deployment.
+Future ACR publication will emit `release.json` with the full Git SHA and both `repository@sha256:...` references. CD promotes that same pair through all three environments without rebuilding or copying between environment registries. SHA tags are human-readable pointers; **digests are deployment identity**. OCI labels contain the Git revision. Base images and the downloaded agent still need digest/checksum hardening plus security gates before cloud deployment.
 
 ## Useful source documentation
 

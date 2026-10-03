@@ -83,11 +83,16 @@ git push -u origin main
 
 ## 5. Observe the first GitHub Actions run
 
-Open your repository → Actions → **Test, build and publish**. The workflow executes backend tests and frontend tests independently, then builds the two container images and uses real PostgreSQL for the smoke test.
+Open your repository → Actions → **Test and build**. The workflow executes backend tests and frontend tests independently, then builds the two container images and uses real PostgreSQL for the smoke test.
 
-On pushes to main, publication uses the GitHub-provided GITHUB_TOKEN automatically. The main-only images job has contents:read and packages:write. PR container checks run in a separate read-only container-check job and never log in to the registry. The workflow performs no Azure login and sends no CI metrics or CI application telemetry to Azure.
+Publication is paused during the ACR transition. All application CI jobs have contents:read; no package-writing permission is needed. PR container checks run in a separate container-check job. Application CI performs no Azure login and sends no CI metrics or application telemetry to Azure.
 
-## 6. Verify GHCR publication
+## 6. Historical GHCR publication checkpoint
+
+This section describes the completed previous checkpoint, not the active workflow.
+Keep these packages private. New releases will go directly to one ACR; proceed to
+[Azure bootstrap](02-azure-bootstrap.md). Do not change package visibility for a
+pull test: private local GHCR pulls use authenticated access.
 
 GHCR replaces Docker Hub for this project. No Docker Hub account, DOCKERHUB_USERNAME variable, DOCKERHUB_TOKEN secret, or manually created GitHub PAT is needed for Actions publication. GitHub creates the short-lived GITHUB_TOKEN automatically; do not try to create a repository secret with that name.
 
@@ -100,7 +105,7 @@ ghcr.io/anuragdchowdhury/notekeeper-frontend:<full-40-character-Git-SHA>
 
 Names use the lowercased repository owner. Each image has org.opencontainers.image.source pointing to this repository. Packages published by its workflow are linked to the repository; existing packages created outside this workflow may require granting this repository access in the package settings.
 
-First publication creates the packages with private visibility. To make this dummy lab public, open your GitHub profile -> Packages -> each notekeeper package -> Package settings -> Change visibility -> Public. Publishing from a public repository does not make the packages public automatically. Public GHCR packages support anonymous pulls. Future AKS deployments will still use an ACR mirror pulled via kubelet managed identity; no GHCR pull token belongs in pods.
+First publication creates packages with private visibility. Publishing from a public repository does not make packages public automatically. The completed GHCR release is historical; no ongoing ACR mirror is planned and no GHCR pull token belongs in pods.
 
 The workflow checks both remote SHA tags before publishing either. It uses authenticated registry status: a missing manifest (404) allows initial publication, while authentication/authorization/network failures stop publication. An existing SHA tag is preserved. This is a workflow safeguard, not a registry-enforced immutable-tag guarantee; always deploy the actual digest. Main publication jobs are serialized by workflow concurrency.
 
@@ -120,4 +125,4 @@ GitHub → Settings → Rules/Rulesets (or Branches) → protect `main`: require
 - Main CI can publish full-SHA tags and release.json records both digests.
 - No `.env` or credentials are committed.
 
-Next: security scanning/image hardening, then Azure subscription/bootstrap and Terraform state/OIDC. We will check quotas and costs before creating Front Door Premium or the two clusters.
+Next: [Azure bootstrap and registry foundation](02-azure-bootstrap.md). Security scanning/image hardening must still pass before enabling cloud publication/deployment. Check quotas and costs before creating Front Door Premium or the two clusters.

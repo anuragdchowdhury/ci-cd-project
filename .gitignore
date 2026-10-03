@@ -10,7 +10,10 @@ coverage/
 *.tfstate.*
 *.tfplan
 *.tfvars
+*.tfvars.json
 !*.tfvars.example
+infra/.generated/
+infra/bootstrap/backend.local.tf
 *.pem
 *.key
 *.log

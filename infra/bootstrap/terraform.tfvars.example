@@ -1,0 +1,10 @@
+subscription_id      = "b4207b90-6a00-470a-aa95-b154c688bb74"
+tenant_id            = "133815cf-acdc-4089-a1e7-fce0de2fe1b4"
+location             = "centralindia"
+name_prefix          = "nk"
+github_repository    = "anuragdchowdhury/ci-cd-project"
+operator_object_id   = "REPLACE-WITH-YOUR-ENTRA-USER-OBJECT-ID"
+operator_public_ipv4 = "REPLACE-WITH-YOUR-CURRENT-PUBLIC-IPV4"
+
+# After ACR exists, add its exact resource ID here and reapply bootstrap.
+# registry_resource_id = "/subscriptions/.../resourceGroups/.../providers/Microsoft.ContainerRegistry/registries/..."

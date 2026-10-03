@@ -1,4 +1,4 @@
-name: Test, build and publish
+name: Test and build
 on:
   pull_request:
     branches: [main]
@@ -55,7 +55,6 @@ jobs:
     needs: [backend-test, frontend-test]
     permissions:
       contents: read
-      packages: write
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -70,31 +69,11 @@ jobs:
           docker compose up --build -d
       - name: Verify real PostgreSQL migrations and same-origin CRUD
         run: python3 scripts/smoke.py
-      - name: Publish the exact tested images to GHCR with full commit SHA tags
-        id: publish
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          GHCR_NAMESPACE: ${{ github.repository_owner }}
-          REGISTRY_USERNAME: ${{ github.actor }}
-          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMMIT_SHA: ${{ github.sha }}
-        run: |
-          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$REGISTRY_USERNAME" --password-stdin
-          python3 scripts/publish.py
-          echo 'published=true' >> "$GITHUB_OUTPUT"
-      - name: Store immutable image references for later promotion
-        if: steps.publish.outputs.published == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: release-${{ github.sha }}
-          path: release.json
-          retention-days: 14
-          if-no-files-found: error
+      # Publication is paused during the GHCR -> ACR transition. ACR publishing
+      # will be added after registry IAM and the CI security gates are verified.
       - name: Print diagnostic container logs on failure
         if: failure()
         run: docker compose logs --tail=100
       - name: Stop the disposable test stack
         if: always()
-        run: |
-          docker compose down --volumes
-          docker logout ghcr.io
+        run: docker compose down --volumes
