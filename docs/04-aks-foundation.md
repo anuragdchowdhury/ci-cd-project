@@ -1,30 +1,30 @@
 # 04 — Provision the AKS and database foundation
 
-This checkpoint creates Azure resources, not a running website. Start with nonprod; provision prod after nonprod deployment works. Terraform runs from your authenticated laptop for this checkpoint. Cloud APIs are reachable from your laptop; private AKS, database and Key Vault data endpoints are not. The next checkpoint supplies private runner/operator access, namespace bootstrap, SQL grants and Helm. We do not temporarily expose those services to make a test pass.
+This checkpoint creates Azure resources, not a running website. Deploy Dev only through the existing `nonprod` root. Staging is removed from the active configuration, and the unprovisioned prod root is removed. Existing bootstrap, registry and remote-state resources are unchanged. Terraform runs from your authenticated laptop for this checkpoint. Cloud APIs are reachable from your laptop; private AKS, database and Key Vault data endpoints are not. The next checkpoint supplies private runner/operator access, namespace bootstrap, SQL grants and Helm. We do not temporarily expose those services to make a test pass.
 
 ## What this PR creates and why
 
-| Component | Nonprod | Prod (later) | Purpose |
-|---|---|---|---|
-| Resource group / VNet | `rg-nk-nonprod`, `10.20.0.0/16` | `rg-nk-prod`, `10.30.0.0/16` | Separate ownership and network boundaries; no peering |
-| Private AKS | `aks-notekeeper-nonprod` | `aks-notekeeper-prod` | Dev/staging share a cluster; prod is separate |
-| System pool | D4s_v5, autoscaler 1–2 nodes | Same small lab settings | Current system-pool minimum is four vCPUs; one node is a lab compromise, not HA |
-| PostgreSQL 16 | B1ms, 32 GiB, dev/staging databases | Separate B1ms server/database | Private networking, Entra-only authentication, seven-day backups; HA off |
-| Key Vault | One each for dev/staging | One for prod | Private endpoints, RBAC, seven-day soft delete/purge protection |
-| Runtime/migration identities | Separate per environment and purpose | Separate prod identities | AKS federation; runtime reads only its own vault; SQL privileges are added next |
-| Deploy identities | Dev/staging namespace RBAC | Prod namespace RBAC | GitHub environment OIDC, no cloud secret; namespaces are created next |
-| Kubelet identity | Two-repository ACR Reader | Separate two-repository Reader | Pulls images without registry passwords or imagePullSecrets |
-| Private state endpoints | Blob endpoint/DNS in each VNet | Same | Future private runners can reach remote state without opening the storage firewall |
-| Reserved subnets | Runner and ingress/Private Link | Same | Keep subsequent private runner and Front Door work in this network |
-| Budget alerts | Platform and AKS node groups separately | Same | Email alerts; each group has its own threshold, not one combined budget or spend cap |
+| Component | Dev configuration | Purpose |
+|---|---|---|
+| Resource group / VNet | `rg-nk-nonprod`, `10.20.0.0/16` | Keep the existing nonprod naming/state key; Dev is its only environment |
+| Private AKS | `aks-notekeeper-nonprod` | One cluster; no staging/prod cluster |
+| System pool | Two fixed `Standard_D4s_v4` nodes, autoscaling off, zones unset | Eight Compute vCPUs within the recorded ten-vCPU regional/family quota |
+| PostgreSQL 16 | B1ms, 32 GiB, only `notekeeper_dev` | Private networking, Entra-only authentication, seven-day backups; HA off |
+| Key Vault | Dev only | Private endpoint, RBAC, seven-day soft delete/purge protection |
+| Runtime/migration identities | Dev only, separate per purpose | AKS federation; runtime reads its vault; SQL grants come next |
+| Deploy identity | Dev namespace RBAC | GitHub `dev` environment OIDC, no cloud secret |
+| Kubelet identity | Two-repository ACR Reader | Passwordless image pulls; no imagePullSecrets |
+| Private state endpoint | Blob endpoint/DNS in the Dev VNet | Future private runner connectivity without opening the storage firewall |
+| Reserved subnets | Runner and ingress/Private Link | Subsequent deployment and Front Door work |
+| Budget alerts | Platform and AKS node groups separately | Email thresholds, not one combined budget or spend cap |
 
 Pods use Azure CNI Overlay + Cilium. Egress uses an AKS-managed standard load balancer; private API does not mean no outbound Internet. AKS creates/owns its node resource group, disks, API private DNS and load-balancer components. Terraform owns our cluster/network declaration; do not manually change AKS-managed resources.
 
-There is no Front Door, Grafana, DCR, telemetry collection, application deployment, SQL principal registration or deployment runner yet. These remain the following milestones. Dev/staging SQL isolation must be validated after grants; creating two databases alone is not sufficient.
+There is no Front Door, Grafana, DCR, telemetry collection, application deployment, SQL principal registration or deployment runner yet. These remain the following milestones. Dev SQL runtime/migration privilege separation must be validated after grants; database creation alone is not sufficient. Managed Prometheus, Managed Grafana, DCR/Log Analytics container logs and OTel traces with a configured backend are still required. Front Door Premium and managed observability do not consume the Compute vCPU quota; their in-cluster agents share the fixed node resources.
 
 ## 1. Merge after checks pass
 
-Merge the foundation PR after its four Terraform checks pass. Then:
+Merge the Dev quota revision PR after its three Terraform checks pass. PR #10 is already merged. Then:
 
 ```bash
 git switch main
@@ -37,7 +37,7 @@ Keep using the operator account with Owner access for these initial resource/rol
 
 ## 2. Reconcile the catalog role you added in the portal
 
-Import the existing assignment instead of creating a duplicate. Your original ignored bootstrap variables and backend must still be present. Do not run init -migrate-state again merely because this PR adds roots.
+If this role is already imported, skip the import and check the bootstrap plan. Otherwise import the existing assignment instead of creating a duplicate. Your original ignored bootstrap variables and backend must still be present. Do not run init -migrate-state again merely because this PR adds roots.
 
 ```bash
 CATALOG_ROLE_ID=$(az role assignment list \
@@ -64,21 +64,25 @@ for provider in Microsoft.Compute Microsoft.Network Microsoft.ContainerService M
 done
 az provider list --query "[?namespace=='Microsoft.Compute' || namespace=='Microsoft.Network' || namespace=='Microsoft.ContainerService' || namespace=='Microsoft.DBforPostgreSQL' || namespace=='Microsoft.KeyVault' || namespace=='Microsoft.ManagedIdentity' || namespace=='Microsoft.Consumption'].{provider:namespace,state:registrationState}" -o table
 az aks get-versions --location centralindia -o table
-az vm list-skus --location centralindia --size Standard_D4s_v5 --all \
-  --query "[?name=='Standard_D4s_v5'].{name:name,restrictions:restrictions}" -o json
+az vm list-skus --location centralindia --size Standard_D4s_v4 --all \
+  --query "[?name=='Standard_D4s_v4'].{name:name,restrictions:restrictions}" -o json
 az vm list-usage --location centralindia -o table
 az postgres flexible-server list-skus --location centralindia -o table
 ```
 
-Wait until registrations show Registered. Choose an available GA AKS patch version from the output; record the exact version rather than selecting a preview or guessing. D4s_v5 must not have a subscription restriction. Confirm B1ms is available. SKU discovery does not guarantee regional capacity at apply time.
+Wait until registrations show Registered. Choose an available GA AKS patch version from the output; record the exact version rather than selecting a preview or guessing. D4s_v4 must not have a region-wide restriction. The recorded restriction is zone 1 only; this pool leaves `zones` unset. Recheck the actual returned restriction type and region, rather than treating a zone restriction as a ban on the entire SKU. Confirm B1ms is available. SKU discovery does not guarantee regional capacity at apply time.
 
-Allow headroom for scale-out and rolling upgrade: each D4s_v5 uses four vCPUs, each cluster can reach two nodes and temporarily add one surge node. Two clusters can therefore need up to 24 vCPUs in the family/regional quotas, before runner VMs or other resources. Initially nonprod starts with only one four-vCPU node. Request quota or choose another available supported four-vCPU SKU if needed; update the ignored inputs before plan.
+The recorded regional quota is ten vCPUs, DSv5 quota is zero, and DSv4 quota is ten. Two D4s_v4 nodes consume eight vCPUs, leaving at most two regional vCPUs for a future runner VM or other Compute resources. Check current usage as well as limits. No autoscaler or extra user pool is enabled. Regional capacity is established only when Azure successfully provisions the nodes.
 
-Before apply, use https://azure.microsoft.com/pricing/calculator/ to estimate Central India D4s_v5 Linux nodes (one normally, up to three during an upgrade), PostgreSQL B1ms + 32 GiB storage, private endpoints, load balancer/disks and networking. Check the subscription's billing currency. Later include Front Door Premium, Grafana, telemetry and private runners; they are not covered by this checkpoint's estimate. Budget alerts notify, never shut resources down. Do not treat the budget amount below as an estimated bill.
+**Upgrade limitation:** this two-node system pool cannot use the requested no-extra-VM rolling upgrade under the pinned provider/service constraints. AzureRM 5.8.0 exposes `max_surge` for the default pool but not `max_unavailable`; Microsoft states that max unavailable cannot be set on system node pools. Setting `max_surge = "0"` alone is not a supported workaround. We retain the supported surge value `"1"`, disable automatic Kubernetes upgrades (channel omitted/null) and automatic node OS image upgrades (`None`), and do not schedule an upgrade within the current quota.
+
+A normal surge upgrade would temporarily need three D4s_v4 nodes: twelve vCPUs, beyond the current ten-vCPU limit. Obtain enough regional and DSv4 quota for the surge plus any runner/other VMs before upgrading, or review a different supported maintenance architecture. Disabling upgrades is a temporary lab tradeoff, not a long-term patch strategy. Do not assume VM-size rotation, node-image upgrades or changing the selected Kubernetes version can proceed at eight vCPUs. A manual `kubectl drain` exercise is different from a managed node upgrade and does not prove upgrade support. During any drain, check PDBs and that the remaining node can fit the application and telemetry agents; availability may decrease.
+
+Before apply, use https://azure.microsoft.com/pricing/calculator/ to estimate Central India D4s_v4 Linux nodes (two fixed; upgrades are deferred until quota is resolved), PostgreSQL B1ms + 32 GiB storage, private endpoints, load balancer/disks and networking. Check the subscription's billing currency. Later include Front Door Premium, Grafana, telemetry and private runners; they are not covered by this checkpoint's estimate. Budget alerts notify, never shut resources down. Do not treat the budget amount below as an estimated bill.
 
 ## 4. Generate ignored configuration
 
-The existing generator now also writes nonprod/prod backend files, pointing to your already-created containers. This command does not migrate or modify remote state:
+The existing generator writes the Dev nonprod backend file, plus the existing bootstrap/registry files, pointing to your already-created containers. This command does not migrate or modify remote state:
 
 ```bash
 terraform -chdir=infra/bootstrap output -json configuration | python3 scripts/configure_azure_backend.py
@@ -94,7 +98,7 @@ terraform -chdir=infra/bootstrap output -json configuration | \
     --alert-email 'REPLACE_WITH_YOUR_EMAIL'
 ```
 
-Review `infra/.generated/nonprod.auto.tfvars.json`. It contains identifiers/configuration, not credentials, and is ignored by Git. Do not publish plans or full state. Keep your existing operator IPv4 storage firewall rule current if your public IP changed.
+Regenerate the inputs even if you generated them before this revision: the old file can still contain D4s_v5. Delete/discard any unapplied saved nonprod plan from the old configuration; make a new plan below. Review `infra/.generated/nonprod.auto.tfvars.json`. It contains identifiers/configuration, not credentials, and is ignored by Git. Do not publish plans or full state. Keep your existing operator IPv4 storage firewall rule current if your public IP changed.
 
 ## 5. Plan, review and apply nonprod
 
@@ -108,7 +112,7 @@ terraform -chdir=infra/nonprod plan \
 terraform -chdir=infra/nonprod show -no-color nonprod.tfplan
 ```
 
-The first plan should add resources for nonprod and add no prod resources. It must not destroy/replace your bootstrap storage or registry: this root owns neither. Review the private API, Entra-only PostgreSQL, SKU, vault public access disabled, repository-conditioned image Reader and namespace deploy scopes.
+Before planning, confirm whether any nonprod resources were created by a previous failed apply: the remote state is the authority. Do not reset/delete it. For an empty nonprod state, the plan should only add the Dev foundation; it should create no staging or prod resources. If resources already exist, inspect any replacement/destruction, especially the node SKU and removed staging resources, before applying. It must not destroy/replace your bootstrap storage or registry: this root owns neither. Review `Standard_D4s_v4`, `node_count = 2`, autoscaling false, zones unset, automatic node upgrades disabled, only Dev identities/database/vault, the private API, Entra-only PostgreSQL and scoped image/deploy permissions. The supported one-node surge value remains an upgrade limitation; it does not allocate an extra VM at initial creation.
 
 Then apply the exact reviewed plan (this starts billable Azure resources):
 
@@ -125,7 +129,7 @@ Expect No changes on the follow-up plan. Creation can take tens of minutes. If a
 
 ```bash
 az aks show -g rg-nk-nonprod -n aks-notekeeper-nonprod \
-  --query '{state:provisioningState,privateAPI:apiServerAccessProfile.enablePrivateCluster,localAccountsDisabled:disableLocalAccounts,oidc:oidcIssuerProfile.enabled,workloadIdentity:securityProfile.workloadIdentity.enabled,pools:agentPoolProfiles[].{name:name,size:vmSize,count:count,min:minCount,max:maxCount}}' -o json
+  --query '{state:provisioningState,privateAPI:apiServerAccessProfile.enablePrivateCluster,localAccountsDisabled:disableLocalAccounts,upgradeChannels:autoUpgradeProfile,oidc:oidcIssuerProfile.enabled,workloadIdentity:securityProfile.workloadIdentity.enabled,pools:agentPoolProfiles[].{name:name,size:vmSize,count:count,autoscaling:enableAutoScaling,zones:availabilityZones,upgradeSettings:upgradeSettings}}' -o json
 az postgres flexible-server list -g rg-nk-nonprod \
   --query '[].{name:name,state:state,publicAccess:network.publicNetworkAccess,authentication:authConfig}' -o json
 az keyvault list -g rg-nk-nonprod --query '[].{name:name,publicAccess:properties.publicNetworkAccess,rbac:properties.enableRbacAuthorization}' -o json
@@ -133,15 +137,15 @@ az network private-endpoint list -g rg-nk-nonprod \
   --query '[].{name:name,state:provisioningState,connections:privateLinkServiceConnections[].privateLinkServiceConnectionState.status}' -o json
 ```
 
-Look for succeeded/ready resources, private AKS enabled, workload identity enabled, local accounts disabled, PostgreSQL public access disabled/password auth disabled, and Approved private endpoint connections.
+Look for exactly two D4s_v4 nodes, autoscaling false, no configured availability zones, only Dev database/vault/identities, node OS upgrades None, and succeeded/ready resources, private AKS enabled, workload identity enabled, local accounts disabled, PostgreSQL public access disabled/password auth disabled, and Approved private endpoint connections.
 
 This proves Azure provisioning, not end-to-end connectivity. `kubectl` from your laptop and reading Key Vault secrets should not work without private network access. At the next checkpoint, we verify DNS resolves privately from the runner, image pulls succeed, register DB principals, apply namespace permissions and deploy dev.
 
 Share the **nonsecret output of `terraform output -json platform`**, the Azure checks above and the follow-up plan summary. Do not send state, plans, access tokens or kubeconfig.
 
-## Prod and shutdown
+## Deferred environments and shutdown
 
-Do not provision prod just to check the code; CI already validates its schema. Once nonprod works, repeat step 5 with `prod` paths/files, then apply its separately reviewed plan. Never point the prod backend at the nonprod container.
+Staging/prod roots and provisioning are not part of this active lab. The original bootstrap state containers (including `tfstate-prod`) remain intact; do not delete them. Stale ignored prod input/backend files may remain on your laptop, but this revision neither generates nor applies prod. The cluster/root keep their nonprod names to avoid needless state/address renaming.
 
 For a pause, stopping AKS and PostgreSQL saves some compute charges but storage, private endpoints and networking continue billing. For permanent cleanup later, remove Helm/Front Door/runner dependencies first, then use `terraform destroy -var-file=../.generated/nonprod.auto.tfvars.json` in this root. Review the destroy plan. Key Vault purge protection means deleted vault names cannot immediately be reused; recover the vault or wait for retention. Never destroy the bootstrap state storage as part of this cleanup.
 
@@ -151,3 +155,6 @@ For a pause, stopping AKS and PostgreSQL saves some compute charges but storage,
 - Workload identity: https://learn.microsoft.com/azure/aks/workload-identity-deploy-cluster
 - PostgreSQL private networking: https://learn.microsoft.com/azure/postgresql/network/concepts-networking-private
 - ACR ABAC permissions: https://learn.microsoft.com/azure/container-registry/container-registry-rbac-abac-repository-permissions
+
+- AKS rolling-upgrade constraints: https://learn.microsoft.com/azure/aks/upgrade-aks-node-pools-rolling
+- Pinned default-pool provider schema: https://github.com/hashicorp/terraform-provider-azurerm/blob/v5.8.0/website/docs/r/kubernetes_cluster.html.markdown

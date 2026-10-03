@@ -34,13 +34,13 @@ def main():
         "operator_object_id": user["id"],
         "operator_login": user["userPrincipalName"],
         "kubernetes_version": args.kubernetes_version,
-        "node_vm_size": "Standard_D4s_v5",
+        "node_vm_size": "Standard_D4s_v4",
         "postgres_sku": "B_Standard_B1ms",
         "monthly_budget_amount": args.budget_amount,
         "alert_email": args.alert_email,
         "budget_start_date": datetime.now(timezone.utc).strftime("%Y-%m-01T00:00:00Z"),
     })
-    for boundary in ["nonprod", "prod"]:
+    for boundary in ["nonprod"]:
         path = generated / f"{boundary}.auto.tfvars.json"
         # Do not silently change the date on an existing budget across month boundaries.
         if path.exists():
@@ -48,7 +48,7 @@ def main():
             values["budget_start_date"] = previous["budget_start_date"]
         path.write_text(json.dumps(values, indent=2) + "\n")
         path.chmod(0o600)
-    print("Generated ignored nonprod/prod inputs. Review them before planning; nothing was provisioned.")
+    print("Generated ignored Dev-only nonprod inputs. Review them before planning; nothing was provisioned.")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 module "platform" {
   source                   = "../modules/platform"
   boundary                 = "nonprod"
-  environments             = ["dev", "staging"]
+  environments             = ["dev"]
   vnet_cidr                = "10.20.0.0/16"
   pod_cidr                 = "10.240.0.0/16"
   service_cidr             = "10.100.0.0/16"
