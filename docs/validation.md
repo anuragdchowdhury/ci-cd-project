@@ -20,3 +20,19 @@ The backend's structured JSON startup/request logs were observed during the API 
 Registry publication now targets GHCR, requests packages:write only on the main-only job, keeps PR container checks read-only, adds OCI repository-source labels, and preserves the digest-pair release manifest. Publisher regression tests cover initial missing manifests, existing tags, denied access, authentication failure and network failure. Actual GHCR authentication, image publication and Docker rebuild must be verified in GitHub Actions after applying the change.
 
 All five GHCR preflight regression tests passed with mocked HTTP responses. Workflow/Compose YAML and Python syntax checks passed; permission checks confirmed that only the main-only images job requests package writes.
+
+## Azure foundation patch — 2026-10-03
+
+| Check | Result | Limit |
+| --- | --- | --- |
+| Terraform 1.16.5 download | Release checksum verified | Not an Azure authentication check |
+| AzureRM 5.8.0 installation | HashiCorp-signed provider installed; Linux AMD64 / macOS ARM64 / macOS AMD64 hashes locked | Azure Policy and service availability still require account checks |
+| Terraform formatting and HCL parsing | Passed | Does not replace provider schema validation |
+| Resource arguments | Checked against pinned provider documentation, including v5 storage networking, container IDs and federation parent fields | Documentation checks do not execute Azure APIs |
+| GitHub workflow lint | Passed with actionlint | Shellcheck was unavailable; script syntax and scope were reviewed separately |
+| Backend configuration helper | Python compilation and isolated generation smoke check passed | Remote migration not executed |
+| terraform validate | Blocked here: provider RPC local sockets are prohibited by the execution workspace | Must pass in the credential-free PR workflow and on the operator machine before apply |
+| Azure plan/apply, OIDC and IAM denials | Not executed | The runbook and manual verification workflow provide the required cloud checkpoints |
+
+No Azure session, state contents or live resources were accessed. GHCR publication
+is paused in this patch; the previously completed release remains historical.

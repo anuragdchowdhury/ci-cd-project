@@ -1,0 +1,49 @@
+name: Verify Azure OIDC scope
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: azure-oidc-check
+  cancel-in-progress: false
+jobs:
+  check:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: azure-oidc-check
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Exchange GitHub OIDC for the diagnostic reader identity
+        uses: azure/login@eec3c95657c1536435858eda1f3ff5437fee8474 # v2.3.0
+        with:
+          client-id: ${{ vars.AZURE_CHECK_READER_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Verify the granted scope
+        env:
+          REGISTRY_RESOURCE_GROUP: ${{ vars.AZURE_REGISTRY_RESOURCE_GROUP }}
+        run: |
+          test -n "$REGISTRY_RESOURCE_GROUP"
+          az group show --name "$REGISTRY_RESOURCE_GROUP" --query '{name:name,location:location}' --output json
+      - name: Verify access outside the scope is denied
+        env:
+          BOOTSTRAP_RESOURCE_GROUP: ${{ vars.AZURE_BOOTSTRAP_RESOURCE_GROUP }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$BOOTSTRAP_RESOURCE_GROUP"
+          failure_output=$(mktemp)
+          trap 'rm -f "$failure_output"' EXIT
+          if az group show --name "$BOOTSTRAP_RESOURCE_GROUP" --output none 2>"$failure_output"; then
+            echo 'Unexpected access to the bootstrap group.' >&2
+            exit 1
+          fi
+          if ! grep -q 'AuthorizationFailed' "$failure_output"; then
+            echo 'Failed for a reason other than the expected IAM denial.' >&2
+            cat "$failure_output" >&2
+            exit 1
+          fi
+          echo 'Expected AuthorizationFailed outside the registry resource group.'
