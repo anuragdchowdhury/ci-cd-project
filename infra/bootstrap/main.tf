@@ -120,7 +120,7 @@ resource "azurerm_federated_identity_credential" "github" {
   user_assigned_identity_id = azurerm_user_assigned_identity.github[each.key].id
   issuer                    = "https://token.actions.githubusercontent.com"
   audience                  = ["api://AzureADTokenExchange"]
-  subject                   = "repo:${var.github_repository}:environment:${each.value}"
+  subject                   = "repo:anuragdchowdhury@88018047/ci-cd-project@1401748151:environment:${each.value}"
 }
 
 resource "azurerm_role_assignment" "registry_infra" {
