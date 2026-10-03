@@ -1,5 +1,8 @@
 output "platform" {
   value = {
+    subscription_id   = var.subscription_id
+    tenant_id         = var.tenant_id
+    postgres_admin    = substr(var.operator_login, 0, 63)
     resource_group    = azurerm_resource_group.platform.name
     vnet_id           = azurerm_virtual_network.platform.id
     runner_subnet_id  = azurerm_subnet.runner.id
@@ -21,6 +24,8 @@ output "platform" {
         migration_client_id     = azurerm_user_assigned_identity.migration[env].client_id
         migration_principal_id  = azurerm_user_assigned_identity.migration[env].principal_id
         migration_identity_name = azurerm_user_assigned_identity.migration[env].name
+        deployer_identity_id    = azurerm_user_assigned_identity.deployer[env].id
+        deployer_principal_id   = azurerm_user_assigned_identity.deployer[env].principal_id
         deployer_client_id      = azurerm_user_assigned_identity.deployer[env].client_id
       }
     }

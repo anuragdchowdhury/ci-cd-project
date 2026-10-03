@@ -26,3 +26,8 @@ __pycache__/
 .ci-tools/
 reports/
 tested-images/
+
+# Nonsecret local deployment outputs; do not commit environment-specific inputs.
+platform.json
+values.json
+run-command.sh

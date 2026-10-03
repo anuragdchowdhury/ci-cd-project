@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: notekeeper-api
+  annotations:
+    azure.workload.identity/client-id: {{ required "runtimeClientId is required" .Values.runtimeClientId | quote }}
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notekeeper-browser-config
+data:
+  runtime-config.js: |
+    window.__APP_CONFIG__ = {{ dict "apiBase" "/api" "environment" "dev" "applicationInsightsConnectionString" .Values.applicationInsightsConnectionString | toJson }};
+---
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: notekeeper-vault
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    clientID: {{ .Values.runtimeClientId | quote }}
+    keyvaultName: {{ required "vaultName is required" .Values.vaultName | quote }}
+    tenantId: {{ required "tenantId is required" .Values.tenantId | quote }}
+    objects: |
+      array:
+        - |
+          objectName: lab-message
+          objectType: secret
+# Mount only. No secretObjects synchronization creates a second Kubernetes Secret.

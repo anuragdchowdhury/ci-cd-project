@@ -85,3 +85,5 @@ ACR publication emits `release.json` with the full Git SHA and both `repository@
 - Azure JDBC identity plugin: https://github.com/Azure/azure-sdk-for-java/blob/main/sdk/identity/azure-identity-extensions/Azure-Database-for-PostgreSQL-README.md
 - Java agent settings, logging OFF and metric filters: https://learn.microsoft.com/azure/azure-monitor/app/java-standalone-config
 - Application Insights Entra authentication and browser exception: https://learn.microsoft.com/azure/azure-monitor/app/azure-ad-authentication
+
+Dev deployment: [Step 5 — private access, SQL bootstrap and Dev CD](docs/05-dev-deployment.md). Follow its four checkpoints after the deployment PR is merged and its new images pass CI. Front Door and managed observability remain subsequent milestones.

@@ -1,0 +1,61 @@
+{{- if not .Values.bootstrapOnly }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/name: notekeeper-web}
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notekeeper-web
+spec:
+  replicas: {{ .Values.frontendReplicas }}
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels: {app.kubernetes.io/name: notekeeper-web}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: notekeeper-web}
+      annotations:
+        notekeeper/release-sha: {{ .Values.releaseSha | quote }}
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: frontend
+          image: {{ required "frontendImage is required" .Values.frontendImage | quote }}
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            {{- include "notekeeper.security" . | nindent 12 }}
+          ports: [{name: http, containerPort: 8080}]
+          startupProbe:
+            httpGet: {path: /healthz, port: http}
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 250m, memory: 128Mi}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            - {name: config, mountPath: /usr/share/nginx/html/runtime-config.js, subPath: runtime-config.js, readOnly: true}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 32Mi}
+        - name: config
+          configMap: {name: notekeeper-browser-config}
+{{- end }}

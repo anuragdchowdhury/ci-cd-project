@@ -74,6 +74,7 @@ jobs:
           docker compose build --pull backend frontend
           docker compose up --no-build -d
           python3 scripts/smoke.py
+          python3 scripts/migration_smoke.py
       - name: Install checksum-verified Trivy
         run: python3 scripts/ci_tools.py install-trivy
       - name: Scan the tested images and generate SBOMs
@@ -113,6 +114,7 @@ jobs:
           docker compose build --pull backend frontend
           docker compose up --no-build -d
           python3 scripts/smoke.py
+          python3 scripts/migration_smoke.py
       - name: Install checksum-verified Trivy
         run: python3 scripts/ci_tools.py install-trivy
       - name: Scan the tested images and generate SBOMs
