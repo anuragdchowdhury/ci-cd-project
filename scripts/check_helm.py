@@ -36,6 +36,6 @@ with tempfile.TemporaryDirectory() as directory:
         if ("kind: Deployment" in rendered) != (bootstrap == "false"):
             raise ValueError("Bootstrap must run migrations before starting the API")
     obs=Path(directory)/"observability.json"
-    obs.write_text(json.dumps({"cert_manager_client_id":values["runtimeClientId"]}))
+    obs.write_text(json.dumps({"cert_manager_client_id":values["runtimeClientId"],"acme_email":"lab@example.com","subscription_id":"b4207b90-6a00-470a-aa95-b154c688bb74","resource_group":"rg-nk-nonprod","dev_dns_zone":"dev.example.com"}))
     subprocess.run(["python3","scripts/bootstrap_platform.py","--observability",str(obs),"--render-only","--helm",str(helm)],check=True)
 print("PASS: bootstrap, runtime and platform Helm charts lint and render.")

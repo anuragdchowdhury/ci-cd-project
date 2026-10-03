@@ -258,7 +258,7 @@ output "observability" {
     law_id                    = azurerm_log_analytics_workspace.lab[0].id
     law_customer_id           = azurerm_log_analytics_workspace.lab[0].workspace_id
     prometheus_id             = azurerm_monitor_workspace.lab[0].id
-    prometheus_query_endpoint = azurerm_monitor_workspace.lab[0].prometheus_query_endpoint
+    prometheus_query_endpoint = azurerm_monitor_workspace.lab[0].query_endpoint
     grafana_name              = azurerm_dashboard_grafana.lab[0].name
     grafana_endpoint          = azurerm_dashboard_grafana.lab[0].endpoint
     backend_connection_string = nonsensitive(azurerm_application_insights.lab["backend"].connection_string)
