@@ -50,7 +50,7 @@ Open a PR into main and wait for backend-test, frontend-test, container-check,
 terraform-check (bootstrap) and terraform-check (registry).
 Their job IDs remain unchanged. If your ruleset restricts checks by workflow
 name, update it for `Test and build`; publication to GHCR is now paused. Historical
-GHCR publisher scripts remain as the prior checkpoint, but CI no longer invokes
+At this bootstrap checkpoint GHCR publisher scripts remain historical; Step 3 replaces them. CI no longer invokes
 publication or has packages:write. Do not run them to publish future releases.
 The new Terraform workflow installs locked providers with backend=false and
 validates both roots without Azure credentials. After these checks appear, add
@@ -315,3 +315,5 @@ Sources:
 - https://learn.microsoft.com/azure/container-registry/container-registry-skus
 - https://learn.microsoft.com/azure/container-registry/container-registry-rbac-abac-repository-permissions
 - https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-azure
+
+After the registry/federation checks pass, continue with [Step 3: secure ACR CI](03-secure-acr-ci.md). Step 3 does not change these Terraform resources or federation subjects.

@@ -36,3 +36,17 @@ All five GHCR preflight regression tests passed with mocked HTTP responses. Work
 
 No Azure session, state contents or live resources were accessed. GHCR publication
 is paused in this patch; the previously completed release remains historical.
+
+
+## ACR CI patch — 2026-10-03
+
+- Twelve publisher/candidate security regressions passed: classified missing manifests versus auth/network errors, content-digest verification, SHA tag preservation, denied scope writes, safe cancellation, no credential forwarding, candidate tampering and wrong commit/run/component rejection.
+- Workflow lint, Python compilation, build-input consistency and diff whitespace checks passed.
+- Docker Hub manifest digests were resolved from authenticated registry responses; Linux AMD64 support was confirmed. Java agent and Trivy archive hashes were read from upstream GitHub release asset metadata; the downloaded Trivy archive matched its pinned checksum.
+- Native Semgrep 1.179.0 scanned the Java/JS application with the four reviewed rules: zero findings. Both disposable unsafe Java/JS fixtures were detected and blocked.
+- Native Trivy 0.75.0 current-source secret scanning passed. The fake AWS-key fixture was detected and blocked. A first known-vulnerable lodash fixture scan confirmed CVE-2021-23337; a frontend runtime-dependency scan found zero HIGH/CRITICAL findings.
+- Repeated native vulnerability scans were limited by the execution filesystem's cached BoltDB memory-map failure. A full final scanner run including dev dependencies must pass in GitHub Actions; no successful full native run is claimed. Maven resolution was kept out of the secrets stage after encountering a shared-IP Maven Central rate limit.
+- Docker builds, the pinned Semgrep Docker wrapper, image vulnerability/SBOM scans and Azure OIDC publication were not executed here: Docker and an authenticated Azure session are unavailable. PR/main workflows must validate these before deployment.
+- GitHub plugin discovery reports it installed, but this session exposes no repository tools. Git push dry-run failed without authentication. The patch has not been pushed or opened as a PR.
+
+No Terraform, federation subjects, Azure resources or GHCR packages were changed by this patch. Prior user-reported Azure provisioning/OIDC success is distinct from these local validation results. No Docker image archive is uploaded as a public-repository artifact.

@@ -3,7 +3,14 @@
   <modelVersion>4.0.0</modelVersion>
   <parent><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-parent</artifactId><version>4.1.1</version><relativePath/></parent>
   <groupId>com.example</groupId><artifactId>notekeeper</artifactId><version>0.0.1</version>
-  <properties><java.version>21</java.version><azure.identity.extensions.version>1.2.9</azure.identity.extensions.version><opentelemetry.version>1.66.0</opentelemetry.version></properties>
+  <properties><java.version>21</java.version><azure.identity.extensions.version>1.2.9</azure.identity.extensions.version><opentelemetry.version>1.66.0</opentelemetry.version>
+    <!-- Temporary patch overrides for the fixed vulnerabilities found by image CI.
+         Keep Jackson modules aligned through their BOMs; remove these overrides
+         when the Spring Boot parent manages equal or newer patched versions. -->
+    <jackson-2-bom.version>2.21.7</jackson-2-bom.version>
+    <jackson-bom.version>3.1.7</jackson-bom.version>
+    <tomcat.version>11.0.25</tomcat.version>
+  </properties>
   <dependencies>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webmvc</artifactId></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-validation</artifactId></dependency>

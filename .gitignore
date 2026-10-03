@@ -21,3 +21,8 @@ infra/bootstrap/backend.local.tf
 release.json
 __pycache__/
 *.py[cod]
+
+# Disposable CI tools, scanner reports and image transfer artifacts
+.ci-tools/
+reports/
+tested-images/

@@ -126,3 +126,7 @@ GitHub → Settings → Rules/Rulesets (or Branches) → protect `main`: require
 - No `.env` or credentials are committed.
 
 Next: [Azure bootstrap and registry foundation](02-azure-bootstrap.md). Security scanning/image hardening must still pass before enabling cloud publication/deployment. Check quotas and costs before creating Front Door Premium or the two clusters.
+
+## Registry checkpoint superseded by ACR
+
+The GHCR instructions above describe the completed historical checkpoint. Current publishing is implemented in [Step 3](03-secure-acr-ci.md), uses ACR and Azure OIDC, and replaces the old publisher environment variables. Do not re-enable GHCR publication.
