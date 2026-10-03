@@ -193,7 +193,9 @@ resource "azurerm_postgresql_flexible_server" "database" {
     password_auth_enabled         = false
     tenant_id                     = var.tenant_id
   }
-  tags       = local.tags
+  tags = local.tags
+  # Zone is deliberately service-selected. Keep Azure's assigned placement.
+  lifecycle { ignore_changes = [zone] }
   depends_on = [azurerm_private_dns_zone_virtual_network_link.postgres]
 }
 resource "azurerm_postgresql_flexible_server_active_directory_administrator" "operator" {
@@ -201,8 +203,10 @@ resource "azurerm_postgresql_flexible_server_active_directory_administrator" "op
   resource_group_name = azurerm_resource_group.platform.name
   tenant_id           = var.tenant_id
   object_id           = var.operator_object_id
-  principal_name      = var.operator_login
-  principal_type      = "User"
+  # PostgreSQL role identifiers are limited to 63 bytes. This lab uses an ASCII
+  # operator UPN; the API returned exactly its first 63 characters after creation.
+  principal_name = substr(var.operator_login, 0, 63)
+  principal_type = "User"
 }
 resource "azurerm_postgresql_flexible_server_database" "app" {
   for_each  = var.environments
