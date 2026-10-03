@@ -34,6 +34,9 @@ def check_inputs():
     agent = INPUTS["agent"]
     if f'ARG AI_AGENT_VERSION={agent["version"]}' not in backend or f'ARG AI_AGENT_SHA256={agent["sha256"]}' not in backend:
         raise ValueError("Agent Dockerfile and build input lock disagree")
+    pcre2 = INPUTS["nginx_runtime_packages"]["pcre2"]
+    if f'ARG PCRE2_VERSION={pcre2}' not in (ROOT / "frontend/Dockerfile").read_text():
+        raise ValueError("Nginx PCRE2 version and build input lock disagree")
     if INPUTS["postgres"]["reference"] not in (ROOT / "compose.yaml").read_text():
         raise ValueError("Compose database is not pinned to the reviewed input")
 

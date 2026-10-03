@@ -8,6 +8,12 @@ COPY src ./src
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e
+# Patch PCRE2 in the reviewed Nginx base; Alpine verifies repository signatures.
+USER 0
+ARG PCRE2_VERSION=10.49-r0
+RUN apk add --no-cache --upgrade "pcre2=${PCRE2_VERSION}"
+USER 101:101
+
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /build/dist /usr/share/nginx/html
 ARG VCS_REF=local

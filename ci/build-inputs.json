@@ -32,5 +32,8 @@
     "version": "0.75.0",
     "url": "https://github.com/aquasecurity/trivy/releases/download/v0.75.0/trivy_0.75.0_Linux-64bit.tar.gz",
     "sha256": "c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f"
+  },
+  "nginx_runtime_packages": {
+    "pcre2": "10.49-r0"
   }
 }
