@@ -26,7 +26,7 @@ resource "azurerm_subnet" "database" {
   resource_group_name  = azurerm_resource_group.platform.name
   virtual_network_name = azurerm_virtual_network.platform.name
   address_prefixes     = [cidrsubnet(var.vnet_cidr, 8, 16)]
-  service_endpoints    = ["Microsoft.Storage"]
+  service_endpoint { service = "Microsoft.Storage" }
   delegation {
     name = "postgres"
     service_delegation {
@@ -47,7 +47,7 @@ resource "azurerm_subnet" "runner" {
   resource_group_name  = azurerm_resource_group.platform.name
   virtual_network_name = azurerm_virtual_network.platform.name
   address_prefixes     = [cidrsubnet(var.vnet_cidr, 8, 18)]
-  service_endpoints    = ["Microsoft.Storage"]
+  service_endpoint { service = "Microsoft.Storage" }
 }
 resource "azurerm_subnet" "ingress" {
   name                                          = "ingress-private-link"
@@ -121,6 +121,10 @@ resource "azurerm_kubernetes_cluster" "platform" {
     object_id                 = azurerm_user_assigned_identity.kubelet.principal_id
     user_assigned_identity_id = azurerm_user_assigned_identity.kubelet.id
   }
+  node_provisioning_profile {
+    mode               = "Manual"
+    default_node_pools = "None"
+  }
   default_node_pool {
     name                 = "system"
     vm_size              = var.node_vm_size
@@ -162,11 +166,10 @@ resource "azurerm_private_dns_zone" "postgres" {
   tags                = local.tags
 }
 resource "azurerm_private_dns_zone_virtual_network_link" "postgres" {
-  name                  = "postgres-vnet"
-  resource_group_name   = azurerm_resource_group.platform.name
-  private_dns_zone_name = azurerm_private_dns_zone.postgres.name
-  virtual_network_id    = azurerm_virtual_network.platform.id
-  registration_enabled  = false
+  name                 = "postgres-vnet"
+  private_dns_zone_id  = azurerm_private_dns_zone.postgres.id
+  virtual_network_id   = azurerm_virtual_network.platform.id
+  registration_enabled = false
 }
 resource "azurerm_postgresql_flexible_server" "database" {
   name                          = "pg-${var.name_prefix}-${var.boundary}-${local.suffix}"
@@ -210,12 +213,11 @@ resource "azurerm_private_dns_zone" "endpoint" {
   tags                = local.tags
 }
 resource "azurerm_private_dns_zone_virtual_network_link" "endpoint" {
-  for_each              = azurerm_private_dns_zone.endpoint
-  name                  = "endpoint-vnet"
-  resource_group_name   = azurerm_resource_group.platform.name
-  private_dns_zone_name = each.value.name
-  virtual_network_id    = azurerm_virtual_network.platform.id
-  registration_enabled  = false
+  for_each             = azurerm_private_dns_zone.endpoint
+  name                 = "endpoint-vnet"
+  private_dns_zone_id  = each.value.id
+  virtual_network_id   = azurerm_virtual_network.platform.id
+  registration_enabled = false
 }
 resource "azurerm_key_vault" "app" {
   for_each                      = var.environments
