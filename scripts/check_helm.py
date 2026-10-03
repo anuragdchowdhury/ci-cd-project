@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory() as directory:
         "frontendImage": "acrnk81c108fc.azurecr.io/notekeeper-frontend@sha256:" + "c" * 64,
         "tenantId": "133815cf-acdc-4089-a1e7-fce0de2fe1b4", "runtimeClientId": "cdcf7697-e3df-44f3-8147-63f2c5981906",
         "migrationClientId": "59e16ef2-6589-47c9-9806-4e695baaca83", "runtimeRole": "id-nk-dev-api", "migrationRole": "id-nk-dev-migration",
-        "postgresFqdn": "pg-nk-nonprod-261e097d.postgres.database.azure.com", "database": "notekeeper_dev", "vaultName": "kv-nk-dev-261e097d"}
+        "postgresFqdn": "pg-nk-nonprod-261e097d.postgres.database.azure.com", "database": "notekeeper_dev", "vaultName": "kv-nk-dev-261e097d", "ingressEnabled": True, "originHost": "origin.dev.example.com"}
     config = Path(directory) / "values.json"
     config.write_text(json.dumps(values))
     for bootstrap in ("true", "false"):
@@ -35,4 +35,7 @@ with tempfile.TemporaryDirectory() as directory:
             raise ValueError("Unexpected application credential or public service")
         if ("kind: Deployment" in rendered) != (bootstrap == "false"):
             raise ValueError("Bootstrap must run migrations before starting the API")
-print("PASS: bootstrap and runtime Helm charts lint and render.")
+    obs=Path(directory)/"observability.json"
+    obs.write_text(json.dumps({"cert_manager_client_id":values["runtimeClientId"]}))
+    subprocess.run(["python3","scripts/bootstrap_platform.py","--observability",str(obs),"--render-only","--helm",str(helm)],check=True)
+print("PASS: bootstrap, runtime and platform Helm charts lint and render.")

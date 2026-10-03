@@ -68,3 +68,24 @@ variable "ssh_public_key" {
     error_message = "Supply an Ed25519 public SSH key. Never supply a private key."
   }
 }
+
+variable "lab_enabled" {
+  type    = bool
+  default = false
+}
+variable "dev_dns_zone" {
+  type    = string
+  default = ""
+  validation {
+    condition     = !var.lab_enabled || can(regex("^dev\\.[a-z0-9.-]+\\.[a-z]{2,}$", var.dev_dns_zone))
+    error_message = "Use a dedicated dev.your-domain subzone; delegate only this subzone at your DNS provider."
+  }
+}
+variable "logs_drill_mode" {
+  type    = bool
+  default = false
+}
+variable "archive_enabled" {
+  type    = bool
+  default = false
+}

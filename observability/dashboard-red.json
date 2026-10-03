@@ -1,0 +1,337 @@
+{
+  "uid": "notekeeper-red",
+  "title": "NoteKeeper \u2014 RED and infrastructure",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "tags": [
+    "notekeeper",
+    "dev"
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request rate",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azureprometheus-datasource",
+        "uid": "nk-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"notekeeper-api\"}[5m]))",
+          "datasource": {
+            "type": "grafana-azureprometheus-datasource",
+            "uid": "nk-prometheus"
+          },
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "5xx error ratio",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azureprometheus-datasource",
+        "uid": "nk-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"notekeeper-api\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=\"notekeeper-api\"}[5m])),0.001)",
+          "datasource": {
+            "type": "grafana-azureprometheus-datasource",
+            "uid": "nk-prometheus"
+          },
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "p95 request duration",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azureprometheus-datasource",
+        "uid": "nk-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95,sum by(le)(rate(http_server_requests_seconds_bucket{job=\"notekeeper-api\"}[5m])))",
+          "datasource": {
+            "type": "grafana-azureprometheus-datasource",
+            "uid": "nk-prometheus"
+          },
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Backend CPU cores",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azureprometheus-datasource",
+        "uid": "nk-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"notekeeper-dev\",container=\"backend\"}[5m]))",
+          "datasource": {
+            "type": "grafana-azureprometheus-datasource",
+            "uid": "nk-prometheus"
+          },
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Heap bytes",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azureprometheus-datasource",
+        "uid": "nk-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(jvm_memory_used_bytes{job=\"notekeeper-api\",area=\"heap\"})",
+          "datasource": {
+            "type": "grafana-azureprometheus-datasource",
+            "uid": "nk-prometheus"
+          },
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "DB connections waiting",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azureprometheus-datasource",
+        "uid": "nk-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(hikaricp_connections_pending{job=\"notekeeper-api\"})",
+          "datasource": {
+            "type": "grafana-azureprometheus-datasource",
+            "uid": "nk-prometheus"
+          },
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Pod restarts",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azureprometheus-datasource",
+        "uid": "nk-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(pod)(increase(kube_pod_container_status_restarts_total{namespace=~\"notekeeper-dev|lab-scenarios\"}[10m]))",
+          "datasource": {
+            "type": "grafana-azureprometheus-datasource",
+            "uid": "nk-prometheus"
+          },
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Pending scenario pods",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azureprometheus-datasource",
+        "uid": "nk-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(kube_pod_status_phase{namespace=\"lab-scenarios\",phase=\"Pending\"})",
+          "datasource": {
+            "type": "grafana-azureprometheus-datasource",
+            "uid": "nk-prometheus"
+          },
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Ready nodes",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azureprometheus-datasource",
+        "uid": "nk-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"})",
+          "datasource": {
+            "type": "grafana-azureprometheus-datasource",
+            "uid": "nk-prometheus"
+          },
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Application scrape targets",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azureprometheus-datasource",
+        "uid": "nk-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=\"notekeeper-api\"}",
+          "datasource": {
+            "type": "grafana-azureprometheus-datasource",
+            "uid": "nk-prometheus"
+          },
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    }
+  ]
+}

@@ -31,12 +31,12 @@ def validate_release(release, commit, registry, run_id=None):
     return release
 
 
-def values(platform, release, registry):
+def values(platform, release, registry, observability=None):
     validate_release(release, release["commit"], registry)
     dev = platform["environments"]["dev"]
     if dev["namespace"] != "notekeeper-dev" or dev["database"] != "notekeeper_dev":
         raise ValueError("Only the Dev lab is active")
-    return {
+    result = {
         "bootstrapOnly": False, "releaseSha": release["commit"],
         "backendImage": release["images"]["backend"]["reference"],
         "frontendImage": release["images"]["frontend"]["reference"],
@@ -48,6 +48,19 @@ def values(platform, release, registry):
         "postgresFqdn": match(r"[a-z0-9-]+\.postgres\.database\.azure\.com", platform["postgres_fqdn"]),
         "database": dev["database"], "vaultName": match(r"[a-z0-9-]+", dev["vault_name"]),
     }
+    if observability:
+        zone = match(r"dev\.[a-z0-9.-]+\.[a-z]{2,}", observability["dev_dns_zone"])
+        for key in ("backend_connection_string", "browser_connection_string"):
+            connection = observability[key]
+            if not isinstance(connection, str) or "InstrumentationKey=" not in connection or "IngestionEndpoint=https://" not in connection:
+                raise ValueError("Invalid telemetry routing configuration")
+        result.update({
+            "applicationInsightsConnectionString": observability["backend_connection_string"],
+            "browserInsightsConnectionString": observability["browser_connection_string"],
+            "ingressEnabled": True, "originHost": "origin." + zone,
+            "traceSamplingPercentage": 10, "labFaultMode": "none",
+        })
+    return result
 
 
 def main():
@@ -55,9 +68,10 @@ def main():
     parser.add_argument("--platform", required=True, type=Path)
     parser.add_argument("--release", required=True, type=Path)
     parser.add_argument("--registry", required=True)
+    parser.add_argument("--observability", type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    output = values(json.loads(args.platform.read_text()), json.loads(args.release.read_text()), args.registry)
+    output = values(json.loads(args.platform.read_text()), json.loads(args.release.read_text()), args.registry, json.loads(args.observability.read_text()) if args.observability else None)
     args.output.write_text(json.dumps(output, indent=2) + "\n")
     print("Generated nonsecret Helm values pinned to both CI image digests.")
 

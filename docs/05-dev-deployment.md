@@ -2,7 +2,7 @@
 
 This bundle gets the first Dev workload running on the already-created private AKS cluster. Follow checkpoints A–D in order. You do not need a new GitHub PAT, ACR password, database password or Azure client secret. Terraform provisions the Azure additions; SQL and Kubernetes bootstrap are explicit one-time operator actions, and Helm owns application releases.
 
-**This milestone does not yet expose a public website or provision Front Door, ingress, monitoring or traces.** The next milestone keeps the agreed Front Door Premium → private ingress → `/` and `/api/` design, then adds Managed Prometheus/Grafana, DCR container logs, trace storage and alert simulations. Staging/prod remain deferred. No GitHub Actions build metrics are collected.
+**This step establishes private deployment. Continue directly with [Step 6](06-complete-dev-lab.md) for the consolidated edge/observability setup and [Step 7](07-scenarios.md) for drills.** The next milestone keeps the agreed Front Door Premium → private ingress → `/` and `/api/` design, then adds Managed Prometheus/Grafana, DCR container logs, trace storage and alert simulations. Staging/prod remain deferred. No GitHub Actions build metrics are collected.
 
 ## What the bundle does and why
 

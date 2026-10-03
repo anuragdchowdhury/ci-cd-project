@@ -14,11 +14,11 @@ def main():
     root = Path(__file__).resolve().parents[1]
     generated = root / "infra" / ".generated"
     generated.mkdir(mode=0o700, exist_ok=True)
-    for stack in ("bootstrap", "registry", "nonprod"):
+    for stack in ("bootstrap", "registry", "nonprod", "edge"):
         values = {
             "storage_account_name": config["storage_account_name"],
-            "container_name": "tfstate-" + stack,
-            "key": "terraform.tfstate",
+            "container_name": "tfstate-nonprod" if stack == "edge" else "tfstate-" + stack,
+            "key": "edge.tfstate" if stack == "edge" else "terraform.tfstate",
             "tenant_id": config["tenant_id"],
             "use_azuread_auth": True,
         }

@@ -12,7 +12,7 @@ metadata:
   name: notekeeper-browser-config
 data:
   runtime-config.js: |
-    window.__APP_CONFIG__ = {{ dict "apiBase" "/api" "environment" "dev" "applicationInsightsConnectionString" .Values.applicationInsightsConnectionString | toJson }};
+    window.__APP_CONFIG__ = {{ dict "apiBase" "/api" "environment" "dev" "applicationInsightsConnectionString" .Values.browserInsightsConnectionString | toJson }};
 ---
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass

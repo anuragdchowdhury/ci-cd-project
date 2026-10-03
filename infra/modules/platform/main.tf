@@ -152,6 +152,20 @@ resource "azurerm_kubernetes_cluster" "platform" {
     service_cidr        = var.service_cidr
     dns_service_ip      = cidrhost(var.service_cidr, 10)
   }
+  dynamic "oms_agent" {
+    for_each = var.lab_enabled ? [1] : []
+    content {
+      log_analytics_workspace_id      = azurerm_log_analytics_workspace.lab[0].id
+      msi_auth_for_monitoring_enabled = true
+    }
+  }
+  dynamic "monitor_metrics" {
+    for_each = var.lab_enabled ? [1] : []
+    content {
+      annotations_allowed = null
+      labels_allowed      = null
+    }
+  }
   key_vault_secrets_provider {
     secret_rotation_enabled  = true
     secret_rotation_interval = "2m"

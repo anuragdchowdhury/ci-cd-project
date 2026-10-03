@@ -24,6 +24,7 @@ jobs:
     env:
       RELEASE_SHA: ${{ inputs.release_sha }}
       ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+      DEV_OBSERVABILITY_JSON: ${{ vars.DEV_OBSERVABILITY_JSON }}
       DEV_PLATFORM_JSON: ${{ vars.DEV_PLATFORM_JSON }}
       DEPLOY_VM_RESOURCE_GROUP: ${{ vars.DEPLOY_VM_RESOURCE_GROUP }}
       DEPLOY_VM_NAME: ${{ vars.DEPLOY_VM_NAME }}

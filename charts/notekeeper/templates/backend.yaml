@@ -51,6 +51,10 @@ spec:
               value: {{ required "runtimeRole is required" .Values.runtimeRole | quote }}
             - name: APPLICATIONINSIGHTS_CONNECTION_STRING
               value: {{ .Values.applicationInsightsConnectionString | quote }}
+            - name: APPLICATIONINSIGHTS_SAMPLING_PERCENTAGE
+              value: {{ .Values.traceSamplingPercentage | quote }}
+            - name: LAB_FAULT_MODE
+              value: {{ .Values.labFaultMode | quote }}
             - name: APPLICATIONINSIGHTS_ROLE_NAME
               value: notekeeper-api-dev
           startupProbe:
