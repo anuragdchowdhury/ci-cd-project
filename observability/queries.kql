@@ -1,0 +1,18 @@
+// Paste the X-Trace-Id from a sampled response. OperationId is the W3C trace ID.
+let trace_id = "PASTE_TRACE_ID";
+union AppRequests, AppDependencies, AppExceptions
+| where OperationId == trace_id
+| project TimeGenerated, Type, OperationId, ParentId, Name, DurationMs, Success
+| order by TimeGenerated asc;
+
+ContainerLogV2
+| where PodNamespace == "notekeeper-dev"
+| extend parsed=parse_json(tostring(LogMessage))
+| where tostring(parsed.traceId) == "PASTE_TRACE_ID"
+| project TimeGenerated, PodName, LogMessage;
+
+// A duplicate-looking group is an investigation lead, not an exactly-once guarantee.
+ContainerLogV2
+| where TimeGenerated > ago(30m)
+| summarize copies=count() by ContainerId, TimeGenerated, message=tostring(LogMessage)
+| where copies > 1;

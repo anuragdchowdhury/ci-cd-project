@@ -33,11 +33,11 @@ flowchart TD
 
 Terraform owns Azure resources; Helm owns workloads/ingress. The AKS cloud controller creates its load balancer as an explicit platform exception. Terraform owns the subsequent PLS/origin wiring; do not also enable automatic PLS ownership through Service annotations. Front Door must preserve the correct origin Host header, use validated TLS on both hops, and have healthy probes. Cache hashed static assets only; never cache API responses or environment runtime-config/index.html indiscriminately. Front Door/WAF restricts the no-login demo to operator traffic.
 
-DNS records resolve to Front Door; DNS is not an HTTP proxy hop. Azure DNS Terraform cannot delegate the registrar's nameservers: copy needed existing MX/TXT records before updating Namecheap delegation. Complete custom-domain validation/certificate issuance and any required private-link approval, then test `/` and `/api` end to end.
+DNS records resolve to Front Door; DNS is not an HTTP proxy hop. Azure DNS Terraform cannot edit the parent DNS provider: delegate only the Dev child zone; preserve parent nameservers and MX/TXT records. Complete custom-domain validation/certificate issuance and any required private-link approval, then test `/` and `/api` end to end.
 
 ## Security essentials retained
 
-Private AKS API, private PostgreSQL and vault endpoints, Entra-only database authentication, passwordless ACR image pulls, workload identity and scoped RBAC remain. OIDC authenticates a workflow but does not supply private network reachability: install the deployment runner on approved private networking before CD. Untrusted PR code never executes on that privileged runner.
+Private AKS API, private PostgreSQL and vault endpoints, Entra-only database authentication, passwordless ACR image pulls, workload identity and scoped RBAC remain. OIDC authenticates a workflow but does not supply private network reachability: use the provisioned VNet deployment VM through ARM Run Command before CD. Untrusted PR code never executes on that privileged runner.
 
 The kubelet identity pulls only the two application image repositories. Dev runtime federation trusts exactly `system:serviceaccount:notekeeper-dev:notekeeper-api`; migration uses its distinct account/identity. SQL administrator initialization grants runtime DML only and migration schema privileges; Azure RBAC does not grant SQL access. Populate unavoidable vault values through private operator access, not Terraform state, and use CSI workload identity without unnecessary Kubernetes Secret copies.
 
@@ -49,7 +49,7 @@ Main builds, tests, scans and publishes one SHA-tagged backend/frontend pair to 
 
 Terraform uses the existing Azure remote state, Entra authentication and confidential saved plans. Review a freshly generated plan before applying that exact plan. Never discard state after a failed apply. Bootstrap/ACR are independent roots and are not destroyed to revise the Dev platform. Capture No changes after apply and later use a controlled manual change for the drift exercise.
 
-## Required observability (subsequent implementation)
+## Required observability (implemented by the final Dev bundle)
 
 | Signal | Owner / store | Controls |
 |---|---|---|
@@ -57,11 +57,11 @@ Terraform uses the existing Azure remote state, Entra authentication and confide
 | Backend spans, requests, dependencies, sanitized exception events | One Java agent / backend Application Insights / Log Analytics | Start with 30-day table retention and 10% routine sampling; temporarily 100% for drills |
 | Browser telemetry | Browser SDK / separate browser Application Insights | Public browser ingestion, privacy/volume controls; no note contents or credentials |
 | Container logs | AMA / explicit DCR / ContainerLogV2 in Log Analytics | 30 days; verified JSON severity parsing and ERROR/CRITICAL filter normally |
-| Inventory and Kubernetes Warning events | Selected Container Insights streams | Keep useful availability evidence; omit overlapping Perf/InsightsMetrics |
+| Kubernetes Warning events | KubeEvents stream; inventories intentionally omitted | Keep useful availability evidence; omit overlapping Perf/InsightsMetrics |
 | Resource diagnostics | Explicit single diagnostic setting per intended stream/destination | Selected Front Door/WAF, vault, DB and platform categories |
 | Optional archive exercise | Selected supported LAW export / Blob lifecycle | Off normally; explicit intentional copy, not broad duplicate exports |
 
-Configure and prove the trace backend, not just the agent. Validate the supported Java-agent authenticated ingestion path with projected workload tokens before disabling local backend ingestion authentication; do not substitute the node identity or a static client secret. The browser SDK cannot use Entra ingestion authentication. Java-agent log/Micrometer export stays off to avoid a second owner for those signals; no additional Java SDK/auto-injection exporter. Container severity transforms apply to the individual log stream, not Kubernetes events. Verify parsing before filtering UNKNOWN logs away.
+Configure and prove the trace backend, not just the agent. Pinned Java agent 3.7.9 lacks direct projected-token ingestion authentication. Step 6 documents connection-string ingestion as the explicit training exception; local ingestion remains enabled. Do not substitute node identity or a static client secret. The browser SDK cannot use Entra ingestion authentication. Java-agent log/Micrometer export stays off to avoid a second owner for those signals; no additional Java SDK/auto-injection exporter. Container severity transforms apply to the individual log stream, not Kubernetes events. Verify parsing before filtering UNKNOWN logs away.
 
 Audit DCR associations, diagnostic settings, scrape targets and SDKs. The goal is no accidental duplicate ingestion; distributed delivery does not guarantee exactly-once events. Different signals from one request are legitimate. Head sampling cannot guarantee every error/slow trace: use controlled 100% drill sampling and restore it; tail sampling needs a separately supported design. Do not promise Prometheus exemplar links before collector/store/UI support is tested; trace IDs plus time/service labels provide an explicit correlation path.
 
@@ -126,3 +126,7 @@ union AppRequests, AppDependencies, AppExceptions
 - Workload identity: https://learn.microsoft.com/azure/aks/workload-identity-deploy-cluster
 - Front Door private origin: https://learn.microsoft.com/azure/frontdoor/standard-premium/how-to-enable-private-link-internal-load-balancer
 - Log transforms: https://learn.microsoft.com/azure/azure-monitor/containers/container-insights-transformations
+
+## Final bundle and exercise limits
+
+[Step 6](06-complete-dev-lab.md) implements edge/monitoring/alerts and [Step 7](07-scenarios.md) supplies the bounded core drills. The broad matrix above is a teaching roadmap, not a claim that every advanced destructive/expiry/restore/HPA exercise is implemented or executed. Step 7 names those extensions explicitly. Fixed nodes have no autoscaler/HPA maximum to simulate. All Azure results still require operator provisioning and captured evidence.

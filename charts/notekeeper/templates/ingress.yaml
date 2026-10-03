@@ -1,0 +1,27 @@
+{{- if and .Values.ingressEnabled (not .Values.bootstrapOnly) }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: notekeeper
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-azure
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [{{ required "originHost is required" .Values.originHost | quote }}]
+      secretName: notekeeper-origin-tls
+  rules:
+    - host: {{ .Values.originHost | quote }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service: {name: backend, port: {number: 8080}}
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: frontend, port: {number: 8080}}
+{{- end }}

@@ -1,0 +1,107 @@
+{
+  "uid": "notekeeper-correlation",
+  "title": "NoteKeeper \u2014 logs, traces and events",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "tags": [
+    "notekeeper",
+    "dev"
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Container logs with correlation IDs",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "nk-azure"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "Azure Log Analytics",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "nk-azure"
+          },
+          "azureLogAnalytics": {
+            "query": "ContainerLogV2 | where $__timeFilter(TimeGenerated) | where PodNamespace == 'notekeeper-dev' | extend parsed=parse_json(tostring(LogMessage)) | project TimeGenerated, PodName, level=tostring(parsed.level), traceId=tostring(parsed.traceId), requestId=tostring(parsed.requestId), message=tostring(parsed.message) | order by TimeGenerated desc",
+            "resultFormat": "table",
+            "resources": []
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Requests and dependencies",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "nk-azure"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "Azure Log Analytics",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "nk-azure"
+          },
+          "azureLogAnalytics": {
+            "query": "union AppRequests, AppDependencies | where $__timeFilter(TimeGenerated) | project TimeGenerated, Type, OperationId, ParentId, Name, DurationMs, Success | order by TimeGenerated desc",
+            "resultFormat": "table",
+            "resources": []
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Kubernetes events",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "nk-azure"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "Azure Log Analytics",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "nk-azure"
+          },
+          "azureLogAnalytics": {
+            "query": "KubeEvents | where $__timeFilter(TimeGenerated) | where Namespace in ('notekeeper-dev','lab-scenarios') | project TimeGenerated, Namespace, Name, Reason, Message | order by TimeGenerated desc",
+            "resultFormat": "table",
+            "resources": []
+          }
+        }
+      ]
+    }
+  ]
+}

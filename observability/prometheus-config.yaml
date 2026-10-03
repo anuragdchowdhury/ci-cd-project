@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ama-metrics-prometheus-config
+  namespace: kube-system
+data:
+  prometheus-config: |-
+    global:
+      scrape_interval: 30s
+      scrape_timeout: 10s
+    scrape_configs:
+      - job_name: notekeeper-api
+        metrics_path: /actuator/prometheus
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names: [notekeeper-dev]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: backend
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: management
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+        metric_relabel_configs:
+          - source_labels: [__name__]
+            action: keep
+            regex: 'http_server_requests_seconds_.*|jvm_.*|process_.*|system_cpu_.*|hikaricp_.*|notekeeper_.*'
+# One explicit application scrape job. Do not also annotate pods for scraping.

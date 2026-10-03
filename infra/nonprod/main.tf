@@ -1,4 +1,9 @@
 module "platform" {
+  archive_enabled          = var.archive_enabled
+  archive_operator_ipv4    = var.operator_ipv4
+  lab_enabled              = var.lab_enabled
+  dev_dns_zone             = var.dev_dns_zone
+  logs_drill_mode          = var.logs_drill_mode
   source                   = "../modules/platform"
   boundary                 = "nonprod"
   environments             = ["dev"]
@@ -21,3 +26,5 @@ module "platform" {
   alert_email              = var.alert_email
 }
 output "platform" { value = module.platform.platform }
+
+output "observability" { value = module.platform.observability }

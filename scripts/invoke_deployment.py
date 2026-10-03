@@ -10,7 +10,8 @@ from deployment_config import match, values
 commit = match(r"[0-9a-f]{40}", os.environ["GITHUB_SHA"])
 platform = json.loads(os.environ["DEV_PLATFORM_JSON"])
 release = json.loads(Path("release.json").read_text())
-helm_values = values(platform, release, os.environ["ACR_LOGIN_SERVER"])
+observability = json.loads(os.environ["DEV_OBSERVABILITY_JSON"]) if os.environ.get("DEV_OBSERVABILITY_JSON", "").strip() else None
+helm_values = values(platform, release, os.environ["ACR_LOGIN_SERVER"], observability)
 resource_group = match(r"[a-zA-Z0-9_.()-]+", os.environ["DEPLOY_VM_RESOURCE_GROUP"])
 vm = match(r"[a-zA-Z0-9-]+", os.environ["DEPLOY_VM_NAME"])
 payload = base64.b64encode(json.dumps({"platform": platform, "values": helm_values}).encode()).decode()
