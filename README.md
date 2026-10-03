@@ -4,7 +4,7 @@ Repository: https://github.com/anuragdchowdhury/ci-cd-project
 
 Start with [Step 1](docs/01-local-and-ci.md). The complete implementation order and acceptance criteria are in [the lab plan](docs/00-lab-plan.md). Optional Antigravity prompts are in [the generation guide](docs/antigravity-prompts.md).
 
-Follow [Azure bootstrap](docs/02-azure-bootstrap.md), then [secure ACR publication](docs/03-secure-acr-ci.md). The operator has completed bootstrap/ACR and the diagnostic OIDC check. Step 3 supplies CI publication; its live push and Docker validation still need the PR/main workflows. There is one application registry: ACR.
+Follow [Azure bootstrap](docs/02-azure-bootstrap.md), then [secure ACR publication](docs/03-secure-acr-ci.md). The operator has completed bootstrap/ACR and the diagnostic OIDC check. The main workflow has successfully tested, scanned and published both SHA-tagged images to ACR. Next follow [AKS foundation](docs/04-aks-foundation.md). There is one application registry: ACR.
 
 ## What is implemented in this starter
 
@@ -18,11 +18,11 @@ Follow [Azure bootstrap](docs/02-azure-bootstrap.md), then [secure ACR publicati
 - Request IDs on every response; real W3C trace/span IDs when the Java agent supplies a span. A request ID alone is not a distributed trace.
 - Backend API tests, frontend API tests, and a container/PostgreSQL smoke test used in GitHub Actions.
 - CI tests → builds two images → tests the exact images. Main publishes the exact tested images to ACR through the existing OIDC publisher identity after security checks. PRs remain read-only. No GitHub CI metrics are exported to Azure.
-- Terraform bootstrap and ACR roots, scoped GitHub federation, protected remote-state configuration and a manual read-only OIDC scope check. See Step 2 for operator execution and cloud verification.
+- Terraform bootstrap/ACR plus reusable nonprod/prod platform roots: private AKS, Entra-only private PostgreSQL, private Key Vaults, workload/deploy identities, scoped ACR pulls and budget alerts. Step 4 explains provisioning and verification; code presence does not mean these resources have been applied.
 
 ## What is intentionally a later lab milestone
 
-Azure bootstrap/ACR provisioning and the diagnostic OIDC check have been completed by the operator. ACR publication is supplied in Step 3 and requires live verification. AKS/networking, private runners, Helm, custom domains, managed database principals/migrations, Key Vault access, Azure telemetry, dashboards, alerts and drills remain later milestones. There is no ongoing GHCR/ACR mirror. Follow Step 2's account, permission, cost and plan checks before applying.
+Azure bootstrap/ACR provisioning, diagnostic OIDC and main CI publication have been verified. Step 4 supplies AKS/network/database/vault foundation code for operator review and apply. Private runners, Helm, Front Door/custom domains, database SQL principals/migrations, runtime Key Vault access, Azure telemetry, dashboards, alerts and drills remain subsequent milestones. There is no ongoing GHCR/ACR mirror. Follow Step 2's account, permission, cost and plan checks before applying.
 
 This application has shared notes and no end-user login. Use disposable sample notes. We will restrict the hosted lab to operator access at Front Door/WAF before exposing it; real multi-user notes require authentication and per-user authorization as a separate application feature.
 

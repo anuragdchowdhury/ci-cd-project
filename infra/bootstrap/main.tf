@@ -187,3 +187,12 @@ resource "azurerm_role_assignment" "operator_image_reader" {
       OR ${local.repository_match})
   EOT
 }
+
+# Human portal browsing requires catalog access in addition to repository Reader.
+resource "azurerm_role_assignment" "operator_catalog_lister" {
+  for_each             = local.registry_scope
+  scope                = each.value
+  role_definition_name = "Container Registry Repository Catalog Lister"
+  principal_id         = var.operator_object_id
+  principal_type       = "User"
+}
