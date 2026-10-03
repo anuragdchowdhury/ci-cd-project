@@ -1,0 +1,32 @@
+rules:
+  - id: java-process-execution
+    languages: [java]
+    severity: ERROR
+    message: This notes API does not need OS process execution. Review and remove it.
+    pattern-either:
+      - pattern: Runtime.getRuntime().exec(...)
+      - pattern: new ProcessBuilder(...)
+  - id: java-concatenated-sql
+    languages: [java]
+    severity: ERROR
+    message: Bind query parameters instead of concatenating query text.
+    pattern-either:
+      - pattern: $S.executeQuery($A + $B)
+      - pattern: $S.executeUpdate($A + $B)
+      - pattern: $E.createQuery($A + $B)
+      - pattern: $E.createNativeQuery($A + $B)
+  - id: javascript-dynamic-code
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Do not execute dynamic JavaScript in the notes UI.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+  - id: javascript-raw-html
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Render notes as text; raw HTML introduces XSS risk.
+    pattern-either:
+      - pattern: $E.innerHTML = $VALUE
+      - pattern: $E.outerHTML = $VALUE
+      - pattern: <$TAG dangerouslySetInnerHTML={$VALUE} ... />

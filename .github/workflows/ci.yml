@@ -6,44 +6,86 @@ on:
     branches: [main]
 permissions:
   contents: read
+env:
+  COMMIT_SHA: ${{ github.sha }}
+  VCS_REF: ${{ github.sha }}
+  SOURCE_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: {persist-credentials: false}
+      - name: Validate reviewed build inputs and release safety
+        run: |
+          python3 scripts/ci_tools.py check
+          python3 -m unittest discover -s scripts -p 'test_*.py' -v
+      - name: Install checksum-verified Trivy
+        run: python3 scripts/ci_tools.py install-trivy
+      - name: Prove scanner gates reject disposable unsafe fixtures
+        run: python3 scripts/security_scan.py self-test
+      - name: Scan dependency locks, secrets and application source
+        run: python3 scripts/security_scan.py source
+      - name: Save dependency and source findings
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: source-security-${{ github.sha }}
+          path: |
+            reports/dependencies.json
+            reports/sast.json
+          if-no-files-found: ignore
+          retention-days: 14
   backend-test:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with: {persist-credentials: false}
-      - name: Test Spring Boot using Java 21
-        run: docker run --rm -v "$PWD/backend:/workspace" -w /workspace maven:3.9.12-eclipse-temurin-21 mvn -B -ntp verify
-      - name: Check GHCR release safety
-        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+      - name: Test Spring Boot using pinned Java 21 build image
+        run: |
+          MAVEN_IMAGE="$(python3 scripts/ci_tools.py reference maven)"
+          docker run --rm -v "$PWD/backend:/workspace" -w /workspace "$MAVEN_IMAGE" mvn -B -ntp verify
   frontend-test:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with: {persist-credentials: false}
-      - name: Test and build React using Node 24
-        run: docker run --rm -v "$PWD/frontend:/workspace" -w /workspace node:24-alpine sh -ec 'npm ci; npm test; npm run build'
+      - name: Test and build React using pinned Node 24 build image
+        run: |
+          NODE_IMAGE="$(python3 scripts/ci_tools.py reference node)"
+          docker run --rm -v "$PWD/frontend:/workspace" -w /workspace "$NODE_IMAGE" sh -ec 'npm ci; npm test; npm run build'
   container-check:
     if: github.event_name == 'pull_request'
-    needs: [backend-test, frontend-test]
+    needs: [backend-test, frontend-test, security]
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with: {persist-credentials: false}
-      - name: Build and test the pull request containers
-        env:
-          VCS_REF: ${{ github.sha }}
-          SOURCE_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
+      - name: Build once and test the pull request containers
         run: |
           cp .env.example .env
-          docker compose up --build -d
+          docker compose build --pull backend frontend
+          docker compose up --no-build -d
           python3 scripts/smoke.py
+      - name: Install checksum-verified Trivy
+        run: python3 scripts/ci_tools.py install-trivy
+      - name: Scan the tested images and generate SBOMs
+        run: python3 scripts/security_scan.py images "$COMMIT_SHA"
+      - name: Save container findings and SBOMs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pr-container-security-${{ github.sha }}
+          path: reports/*.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Print diagnostic container logs on failure
         if: failure()
         run: docker compose logs --tail=100
@@ -52,25 +94,58 @@ jobs:
         run: docker compose down --volumes
   images:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [backend-test, frontend-test]
+    needs: [backend-test, frontend-test, security]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    environment: acr-publish
     permissions:
       contents: read
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
+      id-token: write
+    env:
+      ACR_REGISTRY_NAME: ${{ vars.ACR_REGISTRY_NAME }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with: {persist-credentials: false}
-      - name: Build the two images once and start the local stack
-        env:
-          VCS_REF: ${{ github.sha }}
-          SOURCE_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
+      - name: Build once and test real PostgreSQL migrations and CRUD
         run: |
           cp .env.example .env
-          docker compose up --build -d
-      - name: Verify real PostgreSQL migrations and same-origin CRUD
-        run: python3 scripts/smoke.py
-      # Publication is paused during the GHCR -> ACR transition. ACR publishing
-      # will be added after registry IAM and the CI security gates are verified.
+          docker compose build --pull backend frontend
+          docker compose up --no-build -d
+          python3 scripts/smoke.py
+      - name: Install checksum-verified Trivy
+        run: python3 scripts/ci_tools.py install-trivy
+      - name: Scan the tested images and generate SBOMs
+        run: python3 scripts/security_scan.py images "$COMMIT_SHA"
+      - name: Record the tested image IDs before publication
+        run: python3 scripts/release_candidate.py record
+      - name: Isolate the short-lived registry login
+        run: |
+          mkdir -p "$RUNNER_TEMP/notekeeper-docker"
+          printf 'DOCKER_CONFIG=%s\n' "$RUNNER_TEMP/notekeeper-docker" >> "$GITHUB_ENV"
+      - name: Authenticate the publisher identity with Azure OIDC
+        uses: azure/login@eec3c95657c1536435858eda1f3ff5437fee8474 # v2.3.0
+        with:
+          client-id: ${{ vars.AZURE_PUBLISHER_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Verify publisher scope, push tested images and protect SHA tags
+        run: python3 scripts/publish.py
+      - name: Save the backend/frontend digest pair for promotion
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-${{ github.sha }}
+          path: release.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Save container findings and SBOMs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: container-security-${{ github.sha }}
+          path: reports/*.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Print diagnostic container logs on failure
         if: failure()
         run: docker compose logs --tail=100

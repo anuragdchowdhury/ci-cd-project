@@ -182,7 +182,7 @@ union AppRequests, AppDependencies, AppExceptions
 ## External/bootstrap operations Terraform cannot fully do for us
 
 1. Select/activate the Azure subscription, billing and human bootstrap authority; verify current quotas and required provider registrations.
-2. Create/configure GitHub environments/reviewers and branch rules through the account's settings or an explicitly authorized provider. Never assume YAML alone protects prod. Keep historical GHCR packages private; future releases go to ACR.
+2. Create/configure GitHub environments/reviewers and branch rules through the account's settings or an explicitly authorized provider. Never assume YAML alone protects prod. Delete the two historical GHCR packages once their checkpoint is complete; future releases go only to ACR.
 3. Bootstrap the state backend with initial authenticated access, then migrate local bootstrap state to the protected remote backend; never commit it.
 4. Register ephemeral private runners using a narrowly scoped, approved GitHub credential/registration process. Runner identity and deployment identity are separate.
 5. Initialize PostgreSQL Entra principals/SQL grants and apply migrations from private connectivity. Cloud resource RBAC alone is insufficient.
