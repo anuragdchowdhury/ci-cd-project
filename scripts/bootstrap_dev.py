@@ -43,12 +43,12 @@ def main():
             "-h", platform["postgres_fqdn"], "-U", platform["postgres_admin"], "-d", database],
             input=statement, text=True, env=env)
 
-    registered = [json.loads(line) for line in sql("postgres",
+    registered = [{k.lower(): v for k, v in json.loads(line).items()} for line in sql("postgres",
         "SELECT row_to_json(p) FROM pg_catalog.pgaadauth_list_principals(false) p;").splitlines() if line]
     for prefix in ("runtime", "migration"):
         role = match(r"[a-z0-9-]{1,63}", dev[prefix + "_identity_name"])
         oid = match(UUID, dev[prefix + "_principal_id"])
-        existing = [{k.lower(): v for k, v in row.items()} for row in registered if row["rolename"] == role]
+        existing = [row for row in registered if row["rolename"] == role]
         if existing:
             if len(existing) != 1 or existing[0]["objectid"] != oid or existing[0]["isadmin"] != 0:
                 raise ValueError("Existing SQL role is bound to a different principal or is an admin")
