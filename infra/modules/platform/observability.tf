@@ -272,13 +272,10 @@ output "observability" {
     action_group_id           = azurerm_monitor_action_group.lab[0].id
   } : null
 }
-resource "azurerm_role_assignment" "container_ingest" {
-  count                = local.lab_count
-  scope                = azurerm_monitor_data_collection_rule.containers[0].id
-  role_definition_name = "Monitoring Metrics Publisher"
-  principal_id         = azurerm_kubernetes_cluster.platform.oms_agent[0].oms_agent_identity[0].object_id
-  principal_type       = "ServicePrincipal"
-}
+# Container Insights uses the AKS managed-identity authentication path enabled
+# by oms_agent.msi_auth_for_monitoring_enabled. Azure may return no add-on
+# identity in this mode; the supported onboarding does not require an explicit
+# Monitoring Metrics Publisher assignment. Keep the DCR and association above.
 resource "azurerm_monitor_metric_alert" "postgres_cpu" {
   count               = local.lab_count
   name                = "nk-dev-postgres-cpu"

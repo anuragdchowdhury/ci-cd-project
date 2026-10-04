@@ -45,6 +45,10 @@ terraform -chdir=infra/nonprod show -no-color dev-lab.tfplan
 
 Review additions for monitoring, DNS, certificate identity/RBAC and alerts. The existing AKS adds its monitoring agents **in place**. Existing VM, database, vault, node size/count and bootstrap/registry must not be replaced/destroyed. Unexpected replacements mean stop and inspect the plan. Agents share the two existing nodes; check allocatable/requested resources after installation. Grafana/Monitor regional service availability and current Azure capacity are validated during provisioning, independently of Compute quota.
 
+Container Insights uses managed-identity authentication (`useAADAuth: true`). An absent `addonProfiles.omsagent.identity` is not a reason to create another identity or grant the kubelet additional permissions. The current [Microsoft authentication guidance](https://learn.microsoft.com/en-us/azure/azure-monitor/containers/container-insights-authentication) removes the explicit Monitoring Metrics Publisher requirement; the [official Terraform example](https://github.com/microsoft/Docker-Provider/blob/ci_prod/scripts/onboarding/aks/onboarding-msi-terraform-syslog/main.tf) configures the managed-auth add-on, DCR and association without that assignment.
+
+For recovery after a partial apply, keep the existing resources and state, pull the corrected main branch, and run the plan command above with a fresh output filename (for example, `dev-lab-recovery-v2.tfplan`). The earlier recovery failed because it indexed an absent add-on identity. Do not apply a plan from a command that exited with an error, even when it printed a change summary. Review the complete successful plan; in this recovery the expected remaining changes are the container DCR, its AKS association and the error-alert query correction. After applying, verify DCR associations and actual log delivery in Step 7 before considering collection complete.
+
 ```bash
 terraform -chdir=infra/nonprod apply dev-lab.tfplan
 terraform -chdir=infra/nonprod output -json platform > infra/.generated/dev-platform.json
