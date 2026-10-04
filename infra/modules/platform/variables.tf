@@ -23,3 +23,28 @@ variable "state_storage_account_id" { type = string }
 variable "monthly_budget_amount" { type = number }
 variable "budget_start_date" { type = string }
 variable "alert_email" { type = string }
+
+variable "lab_enabled" {
+  type    = bool
+  default = false
+}
+variable "dev_dns_zone" {
+  type    = string
+  default = ""
+  validation {
+    condition     = !var.lab_enabled || can(regex("^dev\\.[a-z0-9.-]+\\.[a-z]{2,}$", var.dev_dns_zone))
+    error_message = "Use a dedicated dev.your-domain subzone; delegate only this subzone at your DNS provider."
+  }
+}
+variable "logs_drill_mode" {
+  type    = bool
+  default = false
+}
+variable "archive_enabled" {
+  type    = bool
+  default = false
+}
+variable "archive_operator_ipv4" {
+  type    = string
+  default = ""
+}

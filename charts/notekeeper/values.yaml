@@ -16,3 +16,8 @@ vaultName: ""
 applicationInsightsConnectionString: ""
 backendReplicas: 1
 frontendReplicas: 1
+browserInsightsConnectionString: ""
+traceSamplingPercentage: 10
+labFaultMode: none
+ingressEnabled: false
+originHost: ""

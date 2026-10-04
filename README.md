@@ -86,4 +86,4 @@ ACR publication emits `release.json` with the full Git SHA and both `repository@
 - Java agent settings, logging OFF and metric filters: https://learn.microsoft.com/azure/azure-monitor/app/java-standalone-config
 - Application Insights Entra authentication and browser exception: https://learn.microsoft.com/azure/azure-monitor/app/azure-ad-authentication
 
-Dev deployment: [Step 5 — private access, SQL bootstrap and Dev CD](docs/05-dev-deployment.md). Follow its four checkpoints after the deployment PR is merged and its new images pass CI. Front Door and managed observability remain subsequent milestones.
+Dev deployment: [Step 5 — private access, SQL bootstrap and Dev CD](docs/05-dev-deployment.md). Follow its four checkpoints after the deployment PR is merged and its new images pass CI. Continue with [Step 6 — complete Dev edge and observability](docs/06-complete-dev-lab.md), then [Step 7 — scenarios and recovery](docs/07-scenarios.md). These are one consolidated source bundle; Azure apply/DNS and actual evidence collection are operator steps.
