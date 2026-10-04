@@ -32,8 +32,8 @@ variable "dev_dns_zone" {
   type    = string
   default = ""
   validation {
-    condition     = !var.lab_enabled || can(regex("^dev\\.[a-z0-9.-]+\\.[a-z]{2,}$", var.dev_dns_zone))
-    error_message = "Use a dedicated dev.your-domain subzone; delegate only this subzone at your DNS provider."
+    condition     = !var.lab_enabled || can(regex("^[a-z0-9-]+(\\.[a-z0-9-]+)*\\.[a-z]{2,}$", var.dev_dns_zone))
+    error_message = "Use a lowercase DNS domain such as azuredevops.site; configure its authoritative delegation."
   }
 }
 variable "logs_drill_mode" {

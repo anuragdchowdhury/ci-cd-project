@@ -32,7 +32,11 @@ class PromotionTests(unittest.TestCase):
         private=values(platform,self.release,self.registry)
         self.assertNotIn('ingressEnabled',private)
         self.assertEqual(private['backendImage'],configured['backendImage'])
-        obs['dev_dns_zone']='example.com'
+        obs['dev_dns_zone']='azuredevops.site'
+        apex=values(platform,self.release,self.registry,obs)
+        self.assertEqual(apex['originHost'],'origin.azuredevops.site')
+        self.assertEqual(apex['backendImage'],configured['backendImage'])
+        obs['dev_dns_zone']='https://azuredevops.site'
         with self.assertRaises(ValueError):values(platform,self.release,self.registry,obs)
 
     def test_rejects_wrong_ci_run(self):

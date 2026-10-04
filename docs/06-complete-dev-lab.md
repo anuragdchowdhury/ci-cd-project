@@ -29,10 +29,10 @@ Wait for **Test and build** on the merged main commit to finish successfully. Th
 
 ## 2. Provision monitoring and Dev DNS
 
-Choose the dedicated child DNS zone you control. If using the host in the earlier plan, set `DEV_ZONE=dev.azuredevops.site`; otherwise substitute your actual domain. You need access to its **parent DNS provider**, not only ownership of an Azure DNS zone.
+Use the agreed root domain **azuredevops.site** for this Dev lab. Azure DNS will host the whole domain. Before switching nameservers, inventory existing A/AAAA/CNAME/MX/TXT/CAA/SRV records at the current DNS host and recreate any records you need in Azure DNS. If DNSSEC is enabled, remove the old registrar DS record before the switch; do not leave a stale DS delegation. A restrictive CAA policy must permit the origin and Front Door certificate issuers. DNS migration can interrupt existing website/email services if their records are omitted.
 
 ```bash
-DEV_ZONE=dev.YOUR_DOMAIN.com
+DEV_ZONE=azuredevops.site
 python3 scripts/configure_lab.py --dev-zone "$DEV_ZONE"
 terraform -chdir=infra/nonprod init -backend-config=../.generated/nonprod.backend.hcl
 terraform -chdir=infra/nonprod plan \
@@ -53,14 +53,14 @@ terraform -chdir=infra/nonprod output -json observability > infra/.generated/dev
 python3 -m json.tool infra/.generated/dev-observability.json
 ```
 
-At your **parent DNS provider**, create an NS delegation for child `dev` to **all** `nameservers` in this output. Do not replace the parent's nameservers or existing MX/TXT records. If an existing `dev` A/CNAME conflicts with the delegation, replace only that child record after reviewing it. Verify:
+After preserving the existing records in Azure DNS, go to **Namecheap → Domain List → azuredevops.site → Manage → Nameservers → Custom DNS**. Enter **all four** actual `nameservers` from Terraform output and save. No Host field or `dev` NS record is needed for this root-domain migration. Wait for delegation/cache propagation before deploying certificates. Verify:
 
 ```bash
 dig NS "$DEV_ZONE"
 dig A "origin.$DEV_ZONE"
 ```
 
-Expected: Azure authoritative nameservers and origin `10.20.19.10`. Publishing this private origin address does not expose the load balancer to the Internet. Cert-manager proves domain ownership with DNS-01; it does not require a publicly reachable origin. It receives only DNS Zone Contributor on this child zone using workload identity.
+Expected: Azure authoritative nameservers and origin `10.20.19.10`. Publishing this private origin address does not expose the load balancer to the Internet. Cert-manager proves domain ownership with DNS-01; it does not require a publicly reachable origin. It receives only DNS Zone Contributor on this DNS zone using workload identity.
 
 ## 3. Finish existing SQL bootstrap and install controllers
 
@@ -152,7 +152,7 @@ terraform -chdir=infra/edge output -json edge > infra/.generated/dev-edge.json
 
 This stack adds Premium Front Door, WAF, PLS, origin, routing, custom-domain validation/TLS, Azure DNS alias and selected diagnostics. Both hops use HTTPS with certificate name checks. API caching is absent. WAF blocks requests whose source is outside your configured operator IPv4 `/32`; allowed requests still pass managed rules. Updating your public IP requires regenerating edge inputs and applying a reviewed plan. Requests from the VM's different public IP are blocked, so run public website checks on your laptop.
 
-In **Azure Portal → Private Link services → pls-nk-dev-ingress → Private endpoint connections**, inspect the pending connection. Match it to **afd-nk-dev's private-ingress origin** and its request message `NoteKeeper Dev Front Door Premium to Terraform-managed ingress PLS`. PLS permits discovery from all subscriptions because Front Door uses a Microsoft-managed subscription, but has no auto-approval. Discovery is not connection authorization. Approve that connection only; reject unrelated requests. Then inspect **Front Door → Origin groups → private-aks** and **Domains** until connection approval, domain validation, managed certificate and deployment are ready. Terraform cannot complete your parent DNS delegation or substitute for this connection review.
+In **Azure Portal → Private Link services → pls-nk-dev-ingress → Private endpoint connections**, inspect the pending connection. Match it to **afd-nk-dev's private-ingress origin** and its request message `NoteKeeper Dev Front Door Premium to Terraform-managed ingress PLS`. PLS permits discovery from all subscriptions because Front Door uses a Microsoft-managed subscription, but has no auto-approval. Discovery is not connection authorization. Approve that connection only; reject unrelated requests. Then inspect **Front Door → Origin groups → private-aks** and **Domains** until connection approval, domain validation, managed certificate and deployment are ready. Terraform cannot complete your registrar nameserver change or substitute for this connection review.
 
 ```bash
 curl --fail -I "https://$DEV_ZONE/"
@@ -240,7 +240,7 @@ terraform -chdir=infra/edge show -no-color edge-destroy.tfplan
 terraform -chdir=infra/edge apply edge-destroy.tfplan
 ```
 
-Then, from private operator access, uninstall the app/controllers and remove the custom AMA ConfigMap. Review a nonprod saved destroy plan with **all three variable files** if ending the entire lab, or explicitly change only lab flags if retaining the foundation. Destruction of the platform removes its database: confirm backups/retained data first. Private-link dependencies and provider deletion ordering may require retrying a reviewed plan after removals; never discard state. Remove the child DNS delegation after edge cleanup. Bootstrap, ACR and remote-state storage are separate roots and must remain intact unless separately reviewed for final account cleanup.
+Then, from private operator access, uninstall the app/controllers and remove the custom AMA ConfigMap. Review a nonprod saved destroy plan with **all three variable files** if ending the entire lab, or explicitly change only lab flags if retaining the foundation. Destruction of the platform removes its database: confirm backups/retained data first. Private-link dependencies and provider deletion ordering may require retrying a reviewed plan after removals; never discard state. Before destroying the Azure DNS zone, move any retained DNS records to another DNS host and update Namecheap nameservers; do not leave the domain delegated to a deleted zone. Bootstrap, ACR and remote-state storage are separate roots and must remain intact unless separately reviewed for final account cleanup.
 
 ## Completion evidence
 

@@ -216,7 +216,7 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "errors" {
   }
   action { action_groups = [azurerm_monitor_action_group.lab[0].id] }
 }
-# Dedicated child zone: registrar delegation remains an operator step.
+# Website DNS zone: registrar delegation remains an operator step.
 resource "azurerm_dns_zone" "dev" {
   count               = local.lab_count
   name                = var.dev_dns_zone
