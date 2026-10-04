@@ -20,6 +20,19 @@ def identifier(value):
     return '"' + value.replace('"', '""') + '"'
 
 
+def normalize_principal(row):
+    principal = {k.lower(): v for k, v in row.items()}
+    # Azure PostgreSQL returns rolname on some servers; documentation also
+    # describes rolename. Require a consistent name and the security fields.
+    if "rolname" in principal:
+        if "rolename" in principal and principal["rolename"] != principal["rolname"]:
+            raise ValueError("Conflicting SQL principal role names")
+        principal["rolename"] = principal["rolname"]
+    if not {"rolename", "objectid", "isadmin"}.issubset(principal):
+        raise ValueError("SQL principal response lacks required identity fields")
+    return principal
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--platform", required=True, type=Path)
@@ -43,7 +56,7 @@ def main():
             "-h", platform["postgres_fqdn"], "-U", platform["postgres_admin"], "-d", database],
             input=statement, text=True, env=env)
 
-    registered = [{k.lower(): v for k, v in json.loads(line).items()} for line in sql("postgres",
+    registered = [normalize_principal(json.loads(line)) for line in sql("postgres",
         "SELECT row_to_json(p) FROM pg_catalog.pgaadauth_list_principals(false) p;").splitlines() if line]
     for prefix in ("runtime", "migration"):
         role = match(r"[a-z0-9-]{1,63}", dev[prefix + "_identity_name"])
