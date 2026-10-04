@@ -49,7 +49,7 @@ def values(platform, release, registry, observability=None):
         "database": dev["database"], "vaultName": match(r"[a-z0-9-]+", dev["vault_name"]),
     }
     if observability:
-        zone = match(r"dev\.[a-z0-9.-]+\.[a-z]{2,}", observability["dev_dns_zone"])
+        zone = match(r"[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}", observability["dev_dns_zone"])
         for key in ("backend_connection_string", "browser_connection_string"):
             connection = observability[key]
             if not isinstance(connection, str) or "InstrumentationKey=" not in connection or "IngestionEndpoint=https://" not in connection:

@@ -6,7 +6,7 @@ This revision supersedes the initial three-environment deployment for the curren
 
 | Setting | Active choice |
 |---|---|
-| Host | `dev.azuredevops.site` (DNS/TLS phase) |
+| Host | `azuredevops.site` (DNS/TLS phase) |
 | Terraform root/state | `infra/nonprod`, existing `tfstate-nonprod` container/key |
 | AKS / namespace | `aks-notekeeper-nonprod` / `notekeeper-dev` |
 | Nodes | Two fixed D4s_v4 nodes, four vCPUs each; autoscaling off; zones unset |
@@ -33,7 +33,7 @@ flowchart TD
 
 Terraform owns Azure resources; Helm owns workloads/ingress. The AKS cloud controller creates its load balancer as an explicit platform exception. Terraform owns the subsequent PLS/origin wiring; do not also enable automatic PLS ownership through Service annotations. Front Door must preserve the correct origin Host header, use validated TLS on both hops, and have healthy probes. Cache hashed static assets only; never cache API responses or environment runtime-config/index.html indiscriminately. Front Door/WAF restricts the no-login demo to operator traffic.
 
-DNS records resolve to Front Door; DNS is not an HTTP proxy hop. Azure DNS Terraform cannot edit the parent DNS provider: delegate only the Dev child zone; preserve parent nameservers and MX/TXT records. Complete custom-domain validation/certificate issuance and any required private-link approval, then test `/` and `/api` end to end.
+DNS records resolve to Front Door; DNS is not an HTTP proxy hop. Azure DNS Terraform cannot edit the parent DNS provider: migrate required existing DNS records into Azure DNS, then replace Namecheap nameservers for azuredevops.site with the actual Azure zone nameservers. Complete custom-domain validation/certificate issuance and any required private-link approval, then test `/` and `/api` end to end.
 
 ## Security essentials retained
 
