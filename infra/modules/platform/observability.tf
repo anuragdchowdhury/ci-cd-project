@@ -1,7 +1,7 @@
 locals {
   lab_count         = var.lab_enabled ? 1 : 0
   container_streams = ["Microsoft-ContainerLogV2", "Microsoft-KubeEvents"]
-  log_transform     = var.logs_drill_mode ? "source | where PodNamespace in ('notekeeper-dev', 'lab-scenarios')" : "source | where PodNamespace in ('notekeeper-dev', 'lab-scenarios') | extend parsed = parse_json(tostring(LogMessage)) | extend severity = toupper(tostring(coalesce(parsed.level, LogLevel))) | where severity in ('ERROR', 'CRITICAL', 'FATAL') | project-away parsed, severity"
+  log_transform     = var.logs_drill_mode ? "source | where PodNamespace in ('notekeeper-dev', 'lab-scenarios')" : "source | where PodNamespace in ('notekeeper-dev', 'lab-scenarios') | extend parsed = parse_json(tostring(LogMessage)) | extend severity = toupper(iif(isnotempty(tostring(parsed.level)), tostring(parsed.level), LogLevel)) | where severity in ('ERROR', 'CRITICAL', 'FATAL') | project-away parsed, severity"
   alert_rules = {
     ApiErrors     = { expression = "sum(rate(http_server_requests_seconds_count{job=\"notekeeper-api\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=\"notekeeper-api\"}[5m])),0.001) > 0.05", duration = "PT2M" }
     ApiLatency    = { expression = "histogram_quantile(0.95,sum by(le)(rate(http_server_requests_seconds_bucket{job=\"notekeeper-api\"}[5m]))) > 1", duration = "PT2M" }
@@ -205,7 +205,7 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "errors" {
   window_duration       = "PT5M"
   skip_query_validation = true
   criteria {
-    query                   = "ContainerLogV2 | where PodNamespace == 'notekeeper-dev' | extend parsed=parse_json(tostring(LogMessage)) | where toupper(tostring(coalesce(parsed.level,LogLevel))) in ('ERROR','CRITICAL','FATAL')"
+    query                   = "ContainerLogV2 | where PodNamespace == 'notekeeper-dev' | extend parsed=parse_json(tostring(LogMessage)) | where toupper(tostring(coalesce(tostring(parsed.level),LogLevel))) in ('ERROR','CRITICAL','FATAL')"
     time_aggregation_method = "Count"
     operator                = "GreaterThanOrEqual"
     threshold               = 5
