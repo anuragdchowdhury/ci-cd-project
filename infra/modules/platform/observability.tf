@@ -205,7 +205,7 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "errors" {
   window_duration       = "PT5M"
   skip_query_validation = true
   criteria {
-    query                   = "ContainerLogV2 | where PodNamespace == 'notekeeper-dev' | extend parsed=parse_json(tostring(LogMessage)) | where toupper(tostring(coalesce(parsed.level,LogLevel))) in ('ERROR','CRITICAL','FATAL')"
+    query                   = "ContainerLogV2 | where PodNamespace == 'notekeeper-dev' | extend parsed=parse_json(tostring(LogMessage)) | where toupper(tostring(coalesce(tostring(parsed.level),LogLevel))) in ('ERROR','CRITICAL','FATAL')"
     time_aggregation_method = "Count"
     operator                = "GreaterThanOrEqual"
     threshold               = 5
