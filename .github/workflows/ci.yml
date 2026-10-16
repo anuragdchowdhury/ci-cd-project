@@ -32,7 +32,7 @@ jobs:
         run: python3 scripts/security_scan.py source
       - name: Save dependency and source findings
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: source-security-${{ github.sha }}
           path: |
@@ -82,7 +82,7 @@ jobs:
         run: python3 scripts/security_scan.py images "$COMMIT_SHA"
       - name: Save container findings and SBOMs
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pr-container-security-${{ github.sha }}
           path: reports/*.json
@@ -136,7 +136,7 @@ jobs:
       - name: Verify publisher scope, push tested images and protect SHA tags
         run: python3 scripts/publish.py
       - name: Save the backend/frontend digest pair for promotion
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-${{ github.sha }}
           path: release.json
@@ -144,7 +144,7 @@ jobs:
           retention-days: 90
       - name: Save container findings and SBOMs
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: container-security-${{ github.sha }}
           path: reports/*.json
